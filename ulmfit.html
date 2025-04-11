@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ULMFiT Classification Challenge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        /* Apply the game font */
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background-color: #1a1a2e; /* Dark blue background */
+            color: #e0e0e0; /* Light text color */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            overflow: hidden; /* Prevent scrollbars */
+        }
+        /* Style game container */
+        #game-container {
+            background-color: #162447; /* Slightly lighter blue */
+            border: 4px solid #e0e0e0;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+            text-align: center;
+            width: 90%;
+            max-width: 700px;
+            transition: transform 0.1s ease-in-out, border-color 0.2s ease; /* For shake and boss border */
+        }
+        /* Screen shake effect */
+        .shake {
+            animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both;
+            transform: translate3d(0, 0, 0);
+        }
+        @keyframes shake {
+          10%, 90% { transform: translate3d(-1px, 0, 0); }
+          20%, 80% { transform: translate3d(2px, 0, 0); }
+          30%, 50%, 70% { transform: translate3d(-3px, 0, 0); }
+          40%, 60% { transform: translate3d(3px, 0, 0); }
+        }
+        /* Boss mode visual indicator */
+        .boss-mode {
+            border-color: #e43f5a; /* Red border for boss */
+            box-shadow: 0 0 30px rgba(228, 63, 90, 0.5); /* Red glow */
+        }
+
+        /* Style buttons */
+        button {
+            font-family: 'Press Start 2P', cursive;
+            background-color: #1f4068; /* Button blue */
+            color: #e0e0e0;
+            border: 2px solid #e0e0e0;
+            padding: 10px 15px;
+            margin: 10px 5px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s ease; /* Faster transition */
+            box-shadow: 3px 3px 0px #e0e0e0; /* Simple shadow */
+            text-transform: uppercase; /* Make text uppercase */
+            font-size: 0.8rem; /* Adjust font size */
+        }
+        /* Style button hover effect */
+        button:hover:not(:disabled) { /* Only apply hover when not disabled */
+            background-color: #e43f5a; /* Reddish hover */
+            color: #162447;
+            box-shadow: 3px 3px 0px #162447;
+            transform: translateY(-1px); /* Slight lift on hover */
+        }
+        /* Style button active effect */
+        button:active:not(:disabled) {
+            transform: translate(2px, 2px); /* Push down effect */
+            box-shadow: 1px 1px 0px #e0e0e0;
+        }
+        /* Style disabled button */
+        button:disabled {
+            background-color: #555;
+            color: #999;
+            cursor: not-allowed;
+            box-shadow: 3px 3px 0px #999;
+        }
+
+        /* Style text snippet area */
+        #text-snippet {
+            background-color: #1b1b2f; /* Darker background for text */
+            border: 2px dashed #e0e0e0;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            min-height: 100px; /* Increased min-height */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.9rem; /* Adjust font size */
+            line-height: 1.5; /* Improve readability */
+            transition: border-color 0.2s ease; /* For feedback flash */
+        }
+        /* Feedback flash styles */
+        .flash-correct { border-color: #2ecc71; } /* Green */
+        .flash-incorrect { border-color: #e74c3c; } /* Red */
+
+        /* Style score and timer */
+        #stats div {
+            margin: 5px 15px;
+            font-size: 1rem;
+        }
+        /* Score pop animation */
+        .score-pop {
+            animation: score-pop 0.3s ease-out;
+        }
+        @keyframes score-pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        /* Style message box */
+        #message-box {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.85); /* Slightly darker */
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            z-index: 100;
+            display: none; /* Hidden by default */
+            font-size: 1rem;
+            border: 3px solid white; /* Thicker border */
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+            text-align: center;
+            min-width: 250px; /* Ensure enough width */
+        }
+
+        /* Style STLR power-up indicator */
+        #stlr-indicator {
+            margin-top: 10px; /* Adjusted margin */
+            font-size: 0.8rem;
+            color: #f7b731; /* Yellowish color */
+            height: 20px; /* Reserve space */
+            transition: opacity 0.3s ease;
+        }
+        /* Style game title */
+        h1 {
+            color: #f7b731; /* Yellowish title color */
+            margin-bottom: 20px;
+            font-size: 1.5rem; /* Adjust title size */
+            text-shadow: 2px 2px 0px #162447, 4px 4px 0px #e43f5a; /* Add shadow */
+        }
+        /* Penalty Indicator Styling */
+        #penalty-indicator {
+            color: #f39c12; /* Orange warning color */
+            font-size: 0.7rem;
+            height: 18px; /* Reserve space */
+            margin-top: 2px;
+            transition: opacity 0.3s ease;
+        }
+         /* Boss Indicator Styling */
+        #boss-indicator {
+            color: #e74c3c; /* Red boss color */
+            font-size: 0.9rem;
+            font-weight: bold;
+            height: 20px; /* Reserve space */
+            margin-top: 5px;
+        }
+
+    </style>
+</head>
+<body>
+    <div id="message-box"></div>
+
+    <div id="game-container">
+        <h1>ULMFiT Challenge</h1>
+
+        <div id="stats" class="flex justify-center mb-4">
+            <div>Score: <span id="score">0</span></div>
+            <div>Time Left: <span id="timer">60</span>s</div>
+            <div>Stage: <span id="stage">1</span></div>
+        </div>
+
+        <div id="text-snippet" class="text-lg">Press Start Game!</div>
+
+        <div id="buttons-container" class="mt-4">
+            </div>
+
+        <div id="indicators" class="mt-2">
+             <div id="boss-indicator"></div>
+             <div id="stlr-indicator"></div>
+             <div id="forgetting-indicator" class="text-red-500 text-xs h-4 mt-1"></div>
+             <div id="penalty-indicator"></div>
+        </div>
+
+
+        <div class="mt-6">
+            <button id="start-button">Start Game</button>
+            <button id="stlr-button" disabled>Activate STLR (Cost: 50)</button>
+        </div>
+    </div>
+
+    <script>
+        // --- Game Configuration ---
+        const GAME_DURATION = 60; // seconds
+        const STLR_COST = 50;
+        const STLR_DURATION = 10; // seconds for the power-up effect
+        const CORRECT_SCORE_BASE = 10;
+        const INCORRECT_PENALTY_SCORE = 5; // Score penalty
+        const STAGE_UP_SCORE = 50; // Score needed to *trigger* stage boss
+        const WRONG_ANSWER_LIMIT_FORGET = 3; // Consecutive wrong answers for forgetting penalty
+        const FORGETTING_PENALTY_DURATION = 5000; // 5 seconds STLR disabled
+        const TIME_BONUS_MILESTONE = 100; // Score milestone for time bonus
+        const TIME_BONUS_AMOUNT = 5; // Seconds added per bonus
+        const PENALTY_WINDOW_DURATION = 5000; // 5 seconds after an error for escalating time penalty
+        const MAX_PENALTY_TIME_DEDUCTION = 5; // Max seconds deducted per error during penalty window
+
+        // --- Game Data (Datasets & Snippets) ---
+        const datasets = {
+            // Stage 1 Task
+            sentiment: {
+                name: "Sentiment Analysis",
+                categories: ["Positive", "Negative"],
+                stage: 1,
+                snippets: [
+                    { text: "This movie was fantastic, truly inspiring!", category: "Positive" },
+                    { text: "I absolutely loved the performance.", category: "Positive" },
+                    { text: "A heartwarming story.", category: "Positive" },
+                    { text: "The plot was dull and predictable.", category: "Negative" },
+                    { text: "I didn't enjoy the book at all.", category: "Negative" },
+                    { text: "Terrible acting and weak script.", category: "Negative" },
+                    { text: "What a waste of time.", category: "Negative" },
+                    { text: "Incredible experience, highly recommend!", category: "Positive" },
+                    // Boss Snippet for Stage 1
+                    { text: "Despite some flaws, the underlying message was surprisingly uplifting and positive.", category: "Positive", boss: true }
+                ]
+            },
+            // Stage 2 Task
+            topic: {
+                name: "Topic Classification",
+                categories: ["Sports", "Tech", "Politics"],
+                stage: 2,
+                snippets: [
+                    { text: "The final score was 3-1 after extra time.", category: "Sports" },
+                    { text: "New smartphone features announced today.", category: "Tech" },
+                    { text: "Parliament debated the new bill.", category: "Politics" },
+                    { text: "Team captain scores winning goal.", category: "Sports" },
+                    { text: "Download the latest software update.", category: "Tech" },
+                    { text: "Election results are coming in.", category: "Politics" },
+                    { text: "World record broken in athletics.", category: "Sports" },
+                    { text: "AI research makes breakthrough.", category: "Tech" },
+                     // Boss Snippet for Stage 2
+                    { text: "The senator discussed the impact of AI regulation on international athletic competitions.", category: "Politics", boss: true } // Requires distinguishing primary topic
+                ]
+            },
+            // Stage 3 Task
+            question: {
+                name: "Question Type",
+                categories: ["Who", "What", "Where", "When"], // Added 'When' for complexity
+                stage: 3,
+                snippets: [
+                    { text: "Who invented the telephone?", category: "Who" },
+                    { text: "What is the capital of France?", category: "What" },
+                    { text: "Where is the Eiffel Tower located?", category: "Where" },
+                    { text: "When did World War II end?", category: "When" },
+                    { text: "Who directed the movie 'Inception'?", category: "Who" },
+                    { text: "What causes the seasons?", category: "What" },
+                    { text: "Where can I find the nearest library?", category: "Where" },
+                    { text: "When is the next solar eclipse visible here?", category: "When" },
+                    { text: "Who won the Nobel Peace Prize last year?", category: "Who" },
+                    { text: "What are the ingredients for this recipe?", category: "What" },
+                    // Boss Snippet for Stage 3
+                    { text: "Considering the historical context, when was the most likely period the person asking 'Where is the Parthenon?' lived?", category: "When", boss: true } // Inferential question type
+                ]
+            }
+        };
+
+        // --- DOM Elements ---
+        const scoreEl = document.getElementById('score');
+        const timerEl = document.getElementById('timer');
+        const stageEl = document.getElementById('stage');
+        const textSnippetEl = document.getElementById('text-snippet');
+        const buttonsContainer = document.getElementById('buttons-container');
+        const startButton = document.getElementById('start-button');
+        const stlrButton = document.getElementById('stlr-button');
+        const stlrIndicator = document.getElementById('stlr-indicator');
+        const messageBox = document.getElementById('message-box');
+        const gameContainer = document.getElementById('game-container');
+        const forgettingIndicator = document.getElementById('forgetting-indicator');
+        const penaltyIndicator = document.getElementById('penalty-indicator'); // New indicator
+        const bossIndicator = document.getElementById('boss-indicator'); // New indicator
+
+
+        // --- Game State ---
+        let score = 0;
+        let timeLeft = GAME_DURATION;
+        let currentStage = 1;
+        let gameInterval = null;
+        let currentSnippet = null;
+        let currentDatasetKey = 'sentiment';
+        let availableDatasetKeys = ['sentiment'];
+        let stlrActive = false;
+        let stlrTimeout = null;
+        let stlrScoreMultiplier = 1;
+        let consecutiveWrongAnswers = 0;
+        let stlrDisabledByForgetting = false;
+        let forgettingTimeout = null;
+        let consecutiveCorrectAnswers = 0;
+        let nextTimeBonusScore = TIME_BONUS_MILESTONE; // Track score for time bonus
+        let penaltyWindowActive = false; // Is the escalating penalty window open?
+        let penaltyWindowTimeout = null;
+        let penaltyErrorCount = 0; // Errors during the current penalty window
+        let bossModeActive = false; // Is a boss battle active?
+        let pendingStageAdvance = false; // Flag if stage advance is pending boss defeat
+
+
+        // --- Sound Synthesis (Tone.js) ---
+        let soundsReady = false;
+        let synth, noiseSynth, polySynth, metalSynth, fmSynth; // Added more synths
+
+        function initSounds() {
+            if (soundsReady) return;
+            try {
+                Tone.start(); // Required for audio context
+                synth = new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.01, decay: 0.1, sustain: 0.1, release: 0.2 } }).toDestination();
+                noiseSynth = new Tone.NoiseSynth({ noise: { type: 'white' }, envelope: { attack: 0.01, decay: 0.05, sustain: 0, release: 0.1 } }).toDestination();
+                polySynth = new Tone.PolySynth(Tone.Synth, { oscillator: { type: 'triangle' }, envelope: { attack: 0.02, decay: 0.1, sustain: 0.3, release: 0.5 } }).toDestination();
+                // For Boss sounds
+                metalSynth = new Tone.MetalSynth({ frequency: 100, envelope: { attack: 0.01, decay: 0.4, release: 0.2 }, harmonicity: 5.1, modulationIndex: 16, resonance: 4000, octaves: 1.5 }).toDestination();
+                 // For Time Bonus sound
+                fmSynth = new Tone.FMSynth({ harmonicity: 3, modulationIndex: 10, detune: 0, oscillator: { type: "sine" }, envelope: { attack: 0.01, decay: 0.1, sustain: 0.1, release: 0.5 }, modulation: { type: "square" }, modulationEnvelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.5 } }).toDestination();
+
+                soundsReady = true;
+                console.log("Sounds Initialized");
+            } catch (e) {
+                console.error("Failed to initialize Tone.js:", e);
+                // Game can continue without sounds
+            }
+        }
+
+        // Sound playing functions
+        const playSound = {
+            correct: () => soundsReady && synth.triggerAttackRelease('C5', '8n', Tone.now()),
+            incorrect: () => soundsReady && noiseSynth.triggerAttackRelease('16n', Tone.now()),
+            click: () => soundsReady && synth.triggerAttackRelease('C4', '16n', Tone.now()),
+            stageUp: () => soundsReady && polySynth.triggerAttackRelease(['C4', 'E4', 'G4', 'C5'], '4n', Tone.now()), // More triumphant
+            stlrActivate: () => soundsReady && polySynth.triggerAttackRelease(['G5', 'C6', 'E6'], '8n', Tone.now()), // Changed sound
+            gameOver: () => soundsReady && polySynth.triggerAttackRelease(['C3', 'G3', 'C4'], '2n', Tone.now()), // Changed sound
+            start: () => soundsReady && synth.triggerAttackRelease('C4', '8n', Tone.now()),
+            timeBonus: () => soundsReady && fmSynth.triggerAttackRelease("C6", "8n", Tone.now()), // New sound
+            penaltyWarning: () => soundsReady && noiseSynth.triggerAttackRelease('16n', Tone.now() + 0.1), // Slightly delayed noise
+            bossAppear: () => soundsReady && metalSynth.triggerAttackRelease(50, '2n', Tone.now()), // Low metallic sound
+            bossDefeat: () => soundsReady && polySynth.triggerAttackRelease(['C5', 'G5', 'C6', 'E6'], '4n', Tone.now()), // High triumphant sound
+        };
+
+        // --- Visual Effects ---
+        function triggerScreenShake() {
+            gameContainer.classList.add('shake');
+            setTimeout(() => gameContainer.classList.remove('shake'), 300);
+        }
+
+        function flashFeedback(isCorrect) {
+            const className = isCorrect ? 'flash-correct' : 'flash-incorrect';
+            textSnippetEl.classList.add(className);
+            setTimeout(() => textSnippetEl.classList.remove(className), 300);
+        }
+
+        function popElement(element) {
+             element.classList.add('score-pop'); // Reuse score-pop animation
+             // Ensure the animation can re-trigger
+             element.style.animation = 'none';
+             element.offsetHeight; /* trigger reflow */
+             element.style.animation = null;
+             element.classList.add('score-pop');
+             setTimeout(() => element.classList.remove('score-pop'), 300);
+        }
+
+
+        // --- Functions ---
+
+        // Display messages to the user
+        function showMessage(text, duration = 2000) {
+            messageBox.textContent = text;
+            messageBox.style.display = 'block';
+            messageBox.style.opacity = 1; // Ensure visible
+             // Fade out effect
+             setTimeout(() => {
+                 messageBox.style.opacity = 0;
+                 setTimeout(() => { messageBox.style.display = 'none'; }, 300); // Hide after fade
+             }, duration - 300);
+        }
+
+        // Update the displayed score and check for bonuses/stage triggers
+        function updateScore(change) {
+            // Calculate score change, apply multiplier, and round to nearest integer
+            const scoreDelta = Math.round(change * stlrScoreMultiplier);
+            score += scoreDelta;
+            score = Math.max(0, score); // Score cannot go below 0
+            scoreEl.textContent = score; // Update display
+            popElement(scoreEl); // Add visual pop to score change
+
+            // Check for Time Bonus
+            if (score >= nextTimeBonusScore) {
+                timeLeft += TIME_BONUS_AMOUNT;
+                timerEl.textContent = timeLeft;
+                popElement(timerEl);
+                nextTimeBonusScore += TIME_BONUS_MILESTONE; // Set next milestone
+                showMessage(`+${TIME_BONUS_AMOUNT}s Time Bonus!`, 1500);
+                playSound.timeBonus();
+            }
+
+            // Check if Stage Boss should be triggered
+            // FIX: Removed !pendingStageAdvance from condition to allow re-trigger after failure
+            if (!bossModeActive && score >= currentStage * STAGE_UP_SCORE) {
+                 // Find a boss snippet for the current stage
+                 let bossSnippet = null;
+                 let bossDatasetKey = null;
+                 for(const key in datasets) {
+                     // Only consider datasets matching the current stage
+                     if (datasets[key].stage === currentStage) {
+                         const foundBoss = datasets[key].snippets.find(s => s.boss);
+                         if (foundBoss) {
+                             bossSnippet = foundBoss;
+                             bossDatasetKey = key; // Store the key of the dataset containing the boss
+                             break; // Found the boss for this stage
+                         }
+                     }
+                 }
+
+                 if (bossSnippet) {
+                     // Only trigger if stage advance isn't already pending from a *previous* boss defeat this cycle
+                     if (!pendingStageAdvance || !(currentSnippet && currentSnippet.boss)) {
+                        currentDatasetKey = bossDatasetKey; // Set dataset to the one containing the boss
+                        triggerBossBattle(bossSnippet);
+                     }
+                 } else if (!pendingStageAdvance) { // Only advance if no boss found AND not already pending
+                     // No boss found for this stage? Advance normally (fallback)
+                     // This might happen if score jumps multiple stage thresholds at once
+                     console.warn(`No boss snippet found for stage ${currentStage} or already pending. Advancing stage directly if possible.`);
+                     pendingStageAdvance = true; // Mark that we intend to advance
+                     advanceStage(); // Advance stage immediately if no boss
+                 }
+            }
+
+
+            // Enable/disable STLR button based on score and forgetting penalty
+            stlrButton.disabled = score < STLR_COST || stlrActive || !gameInterval || stlrDisabledByForgetting || bossModeActive;
+        }
+
+        // Trigger Boss Battle
+        function triggerBossBattle(bossSnippetData) {
+            if (bossModeActive) return; // Already in boss battle
+
+            bossModeActive = true;
+            pendingStageAdvance = true; // Mark stage advance as pending boss defeat
+
+            gameContainer.classList.add('boss-mode'); // Visual indicator
+            bossIndicator.textContent = "!! BOSS BATTLE !!";
+            playSound.bossAppear();
+            showMessage(`BOSS BATTLE: Stage ${currentStage}! Classify correctly to advance!`, 3000);
+
+            // Disable STLR during boss battle
+            stlrButton.disabled = true;
+
+            // Display the boss snippet
+            displaySnippet(bossSnippetData); // Pass the specific boss snippet to display
+        }
+
+        // Handle advancing stage (ULMFiT: Gradual Unfreezing / Fine-tuning on harder tasks)
+        function advanceStage() {
+             // Only advance if pending flag is set (meaning boss was defeated or no boss existed)
+             if (!pendingStageAdvance) return;
+
+             currentStage++;
+             stageEl.textContent = currentStage;
+             playSound.stageUp();
+             showMessage(`Fine-tuning Stage ${currentStage} Reached!`, 2500);
+
+             // Unlock new datasets based on stage
+             let newTasksUnlocked = false;
+             for (const key in datasets) {
+                 if (datasets[key].stage === currentStage && !availableDatasetKeys.includes(key)) {
+                     availableDatasetKeys.push(key);
+                     showMessage(`New Task Unlocked: ${datasets[key].name}!`, 3000);
+                     newTasksUnlocked = true;
+                 }
+             }
+             if (newTasksUnlocked) {
+                 showMessage("Model adapting to more complex data...", 2000);
+             }
+
+             pendingStageAdvance = false; // Reset flag: stage advance is complete
+             bossModeActive = false; // Ensure boss mode is off
+             gameContainer.classList.remove('boss-mode'); // Remove visual indicator
+             bossIndicator.textContent = "";
+             // Reset time bonus milestone relative to current score, ensuring it's the next multiple
+             nextTimeBonusScore = (Math.floor(score / TIME_BONUS_MILESTONE) + 1) * TIME_BONUS_MILESTONE;
+
+
+             // Display a regular snippet for the new stage
+             displayNextRegularSnippet();
+        }
+
+        // Select a random dataset key from the available ones
+        function selectRandomDatasetKey() {
+            const randomIndex = Math.floor(Math.random() * availableDatasetKeys.length);
+            return availableDatasetKeys[randomIndex];
+        }
+
+        // Displays a specific snippet and its buttons
+        function displaySnippet(snippet) {
+             currentSnippet = snippet; // Update global reference
+             // Determine the dataset key based on the snippet's stage (needed if snippet is passed directly)
+             let snippetDatasetKey = null;
+             for (const key in datasets) {
+                 if (datasets[key].snippets.includes(snippet)) {
+                     snippetDatasetKey = key;
+                     break;
+                 }
+             }
+             // Fallback if dataset key not found (shouldn't happen with current structure)
+             const dataset = datasets[snippetDatasetKey || currentDatasetKey];
+
+
+             // Display text
+             textSnippetEl.textContent = `"${snippet.text}" (${dataset.name})`;
+             if (snippet.boss) {
+                 textSnippetEl.textContent += " [BOSS]";
+             }
+
+
+             // Create and display buttons
+             buttonsContainer.innerHTML = ''; // Clear previous buttons
+             dataset.categories.forEach(category => {
+                 const button = document.createElement('button');
+                 button.textContent = category;
+                 button.onclick = () => handleAnswer(category);
+                 // Add click sound to buttons
+                 button.addEventListener('mousedown', playSound.click);
+                 buttonsContainer.appendChild(button);
+             });
+        }
+
+         // Displays the next regular (non-boss) snippet
+         function displayNextRegularSnippet() {
+             // This function should ONLY be called when not in an active boss battle that hasn't been resolved
+             if (bossModeActive && pendingStageAdvance) return;
+
+             // Select a dataset key from the available ones
+             currentDatasetKey = selectRandomDatasetKey();
+             const dataset = datasets[currentDatasetKey];
+
+             // Filter for non-boss snippets in the selected dataset, excluding the immediate previous one
+             const availableSnippets = dataset.snippets.filter(s => !s.boss && s !== currentSnippet);
+
+             let nextSnippet;
+             if (availableSnippets.length === 0) {
+                  // Fallback 1: Use any non-boss snippet from the current dataset if filtering left none
+                  const nonBossSnippets = dataset.snippets.filter(s => !s.boss);
+                  if (nonBossSnippets.length > 0) {
+                       nextSnippet = nonBossSnippets[Math.floor(Math.random() * nonBossSnippets.length)];
+                  } else {
+                       // Fallback 2: Switch to another available dataset and pick a non-boss snippet
+                       let fallbackKey = selectRandomDatasetKey();
+                       // Ensure we don't pick the same empty dataset again if possible
+                       let attempts = 0;
+                       while(datasets[fallbackKey].snippets.filter(s => !s.boss).length === 0 && attempts < availableDatasetKeys.length) {
+                           fallbackKey = selectRandomDatasetKey();
+                           attempts++;
+                       }
+                       currentDatasetKey = fallbackKey;
+                       const fallbackDataset = datasets[currentDatasetKey];
+                       const fallbackSnippets = fallbackDataset.snippets.filter(s => !s.boss);
+                        if (fallbackSnippets.length > 0) {
+                             nextSnippet = fallbackSnippets[Math.floor(Math.random() * fallbackSnippets.length)];
+                        } else {
+                             // Absolute fallback: Game might be stuck if no non-boss snippets exist anywhere
+                             console.error("No non-boss snippets found in any available dataset!");
+                             textSnippetEl.textContent = "Error: No snippets available!";
+                             return; // Prevent infinite loop
+                        }
+                  }
+             } else {
+                 // Standard case: Pick a random snippet from the filtered list
+                 const randomIndex = Math.floor(Math.random() * availableSnippets.length);
+                 nextSnippet = availableSnippets[randomIndex];
+             }
+             displaySnippet(nextSnippet);
+         }
+
+
+        // Handle player's answer
+        function handleAnswer(selectedCategory) {
+            if (!currentSnippet || !gameInterval) return; // Game not running or no snippet
+
+            let scoreChange = 0;
+            if (selectedCategory === currentSnippet.category) {
+                // --- CORRECT ANSWER ---
+                playSound.correct();
+                flashFeedback(true);
+                consecutiveWrongAnswers = 0; // Reset wrong answer counter
+                consecutiveCorrectAnswers++;
+                clearPenaltyWindow(); // Correct answer clears penalty window
+
+                // ULMFiT: Discriminative Fine-tuning Bonus
+                const stageBonus = Math.max(0, datasets[currentDatasetKey].stage - 1) * 2;
+                scoreChange = CORRECT_SCORE_BASE + stageBonus;
+                // Update score *before* checking for boss defeat, as score change might trigger next boss
+                updateScore(scoreChange); // Score is updated here (now rounded)
+
+                // Check if this defeats a boss
+                if (bossModeActive && currentSnippet.boss) {
+                     playSound.bossDefeat();
+                     showMessage(`BOSS DEFEATED! Stage ${currentStage + 1} unlocked!`, 3000);
+                     // Advance to the next stage. The pendingStageAdvance flag is true,
+                     // so advanceStage will proceed. It resets flags and displays next snippet.
+                     advanceStage();
+
+                } else if (!bossModeActive) { // Only process regular correct if not in boss mode
+                     // Regular correct answer message (show rounded score gain)
+                     const displayedScoreGain = Math.round(scoreChange * stlrScoreMultiplier);
+                     showMessage(`Correct! +${displayedScoreGain}`, 1000);
+
+                     // ULMFiT: Data Efficiency Bonus Message
+                     if (consecutiveCorrectAnswers > 0 && consecutiveCorrectAnswers % 5 === 0) {
+                         showMessage(`Data Efficiency Bonus! +${5 * currentStage}`, 1500);
+                         updateScore(5 * currentStage); // Add bonus score (will also be rounded)
+                     }
+                      // Display next regular snippet ONLY if not in boss mode
+                      displayNextRegularSnippet();
+                }
+                 // If it was a correct non-boss answer during boss mode (shouldn't happen with current logic), do nothing extra here.
+
+            } else {
+                // --- INCORRECT ANSWER ---
+                playSound.incorrect();
+                flashFeedback(false);
+                triggerScreenShake();
+                consecutiveWrongAnswers++;
+                consecutiveCorrectAnswers = 0; // Reset correct streak
+
+                // Score Penalty
+                scoreChange = -INCORRECT_PENALTY_SCORE;
+                updateScore(scoreChange); // Update score first (will be rounded)
+                showMessage(`Incorrect! It was: ${currentSnippet.category}`, 1500);
+
+                // Handle Boss Failure
+                if (bossModeActive && currentSnippet.boss) {
+                     showMessage("Boss Battle Failed! Try again later...", 2000);
+                     // Keep pendingStageAdvance = true (Allows boss to re-trigger)
+                     bossModeActive = false; // Exit boss mode temporarily to show regular snippet
+                     gameContainer.classList.remove('boss-mode');
+                     bossIndicator.textContent = "";
+                     displayNextRegularSnippet(); // Show a normal one before allowing boss re-trigger
+                } else if (!bossModeActive) {
+                     // Only display next regular snippet if it wasn't a boss failure
+                     displayNextRegularSnippet();
+                }
+
+
+                // Activate/Escalate Time Penalty Window
+                if (!penaltyWindowActive) {
+                    activatePenaltyWindow();
+                } else {
+                    escalateTimePenalty();
+                }
+
+                // ULMFiT: Catastrophic Forgetting Penalty (STLR disable)
+                if (consecutiveWrongAnswers >= WRONG_ANSWER_LIMIT_FORGET && !stlrDisabledByForgetting) {
+                    triggerForgettingPenalty();
+                }
+            }
+        }
+
+        // Activate the penalty window on first error
+        function activatePenaltyWindow() {
+             penaltyWindowActive = true;
+             penaltyErrorCount = 1; // First error in this window
+             penaltyIndicator.textContent = "Penalty Window Active!";
+             penaltyIndicator.style.opacity = 1;
+             playSound.penaltyWarning(); // Play warning sound
+
+             // Clear existing timeout if any
+             if (penaltyWindowTimeout) clearTimeout(penaltyWindowTimeout);
+
+             // Set timeout to clear the penalty window
+             penaltyWindowTimeout = setTimeout(() => {
+                 clearPenaltyWindow();
+             }, PENALTY_WINDOW_DURATION);
+        }
+
+        // Escalate time penalty on subsequent errors within the window
+        function escalateTimePenalty() {
+             penaltyErrorCount++;
+             const timePenalty = Math.min(penaltyErrorCount, MAX_PENALTY_TIME_DEDUCTION); // Penalty increases but caps
+             timeLeft = Math.max(0, timeLeft - timePenalty); // Deduct time, floor at 0
+             timerEl.textContent = timeLeft;
+             popElement(timerEl);
+             showMessage(`-${timePenalty}s Time Penalty! (Error ${penaltyErrorCount})`, 1500);
+             playSound.incorrect(); // Play error sound again
+
+             // Reset the window timer
+             if (penaltyWindowTimeout) clearTimeout(penaltyWindowTimeout);
+             penaltyWindowTimeout = setTimeout(() => {
+                 clearPenaltyWindow();
+             }, PENALTY_WINDOW_DURATION);
+
+             // Check if game over due to time penalty
+             if (timeLeft <= 0) {
+                 endGame();
+             }
+        }
+
+        // Clear the penalty window state
+        function clearPenaltyWindow() {
+             if (penaltyWindowActive) {
+                 penaltyWindowActive = false;
+                 penaltyErrorCount = 0;
+                 penaltyIndicator.style.opacity = 0;
+                 if (penaltyWindowTimeout) clearTimeout(penaltyWindowTimeout);
+                 // Optional: Message indicating penalty window cleared
+                 // showMessage("Penalty window cleared.", 1000);
+             }
+        }
+
+         // Trigger the 'Catastrophic Forgetting' STLR disable penalty
+         function triggerForgettingPenalty() {
+             stlrDisabledByForgetting = true;
+             stlrButton.disabled = true; // Explicitly disable
+             forgettingIndicator.textContent = "STLR Disabled: Forgetting!";
+             showMessage("Catastrophic Forgetting! STLR disabled temporarily.", FORGETTING_PENALTY_DURATION - 500);
+             playSound.incorrect(); // Extra error sound
+
+             // Clear existing timeout if any
+             if (forgettingTimeout) clearTimeout(forgettingTimeout);
+
+             forgettingTimeout = setTimeout(() => {
+                 stlrDisabledByForgetting = false;
+                 forgettingIndicator.textContent = "";
+                 // Re-enable STLR button only if other conditions met
+                 stlrButton.disabled = score < STLR_COST || stlrActive || !gameInterval || bossModeActive;
+                 showMessage("Forgetting recovery complete.", 2000);
+             }, FORGETTING_PENALTY_DURATION);
+         }
+
+
+        // Activate the STLR power-up
+        function activateSTLR() {
+            if (score >= STLR_COST && !stlrActive && gameInterval && !stlrDisabledByForgetting && !bossModeActive) {
+                initSounds(); // Ensure sounds are ready
+                playSound.stlrActivate();
+                updateScore(-STLR_COST); // Deduct cost (will be rounded)
+                stlrActive = true;
+                stlrButton.disabled = true; // Disable while active
+
+                let elapsed = 0;
+                const peakTime = STLR_DURATION / 3;
+                const maxMultiplier = 3;
+                stlrScoreMultiplier = 1; // Start from base
+
+                stlrIndicator.textContent = `STLR Active! Multiplier: x${stlrScoreMultiplier.toFixed(1)}`;
+                stlrIndicator.style.opacity = 1;
+
+
+                // STLR effect interval (needs to be stored to be cleared potentially)
+                stlrTimeout = setInterval(() => { // Store interval ID in stlrTimeout
+                    elapsed++;
+                    if (elapsed <= peakTime) {
+                        stlrScoreMultiplier = 1 + (maxMultiplier - 1) * (elapsed / peakTime);
+                    } else {
+                        stlrScoreMultiplier = maxMultiplier - (maxMultiplier - 1) * ((elapsed - peakTime) / (STLR_DURATION - peakTime));
+                    }
+                    stlrScoreMultiplier = Math.max(1, stlrScoreMultiplier);
+                    stlrIndicator.textContent = `STLR Active! Multiplier: x${stlrScoreMultiplier.toFixed(1)}`;
+
+                    if (elapsed >= STLR_DURATION) {
+                        clearInterval(stlrTimeout); // Use stored ID
+                        stlrTimeout = null; // Clear stored ID
+                        stlrActive = false;
+                        stlrScoreMultiplier = 1;
+                        stlrIndicator.style.opacity = 0;
+                        stlrButton.disabled = score < STLR_COST || !gameInterval || stlrDisabledByForgetting || bossModeActive;
+                    }
+                }, 1000);
+
+                showMessage("STLR Activated! Score boost ramps up then down.", 2500);
+            }
+        }
+
+
+        // Start the game
+        function startGame() {
+             // Initialize sounds on the first start click
+             if (!soundsReady) {
+                initSounds();
+             }
+             playSound.start();
+
+            // Reset game state
+            score = 0;
+            currentStage = 1;
+            timeLeft = GAME_DURATION;
+            availableDatasetKeys = ['sentiment'];
+            stlrActive = false;
+            stlrScoreMultiplier = 1;
+            consecutiveWrongAnswers = 0;
+            consecutiveCorrectAnswers = 0;
+            stlrDisabledByForgetting = false;
+            bossModeActive = false;
+            pendingStageAdvance = false;
+            penaltyWindowActive = false;
+            penaltyErrorCount = 0;
+            nextTimeBonusScore = TIME_BONUS_MILESTONE;
+
+
+            // Clear all timeouts and intervals
+            if (gameInterval) clearInterval(gameInterval); gameInterval = null; // Assign null after clearing
+            if (stlrTimeout) clearInterval(stlrTimeout); stlrTimeout = null;
+            if (forgettingTimeout) clearTimeout(forgettingTimeout); forgettingTimeout = null;
+            if (penaltyWindowTimeout) clearTimeout(penaltyWindowTimeout); penaltyWindowTimeout = null;
+
+
+            // Reset UI elements
+            scoreEl.textContent = score;
+            timerEl.textContent = timeLeft;
+            stageEl.textContent = currentStage;
+            startButton.textContent = "Restart Game";
+            startButton.disabled = true;
+            stlrButton.disabled = true;
+            stlrIndicator.textContent = "";
+            stlrIndicator.style.opacity = 0;
+            forgettingIndicator.textContent = "";
+            penaltyIndicator.textContent = "";
+            penaltyIndicator.style.opacity = 0;
+            bossIndicator.textContent = "";
+            gameContainer.classList.remove('boss-mode');
+
+
+            showMessage("Game Starting! Classify the text.", 1500);
+
+            // Display first snippet
+            displayNextRegularSnippet();
+
+            // Start timer interval
+            gameInterval = setInterval(() => {
+                timeLeft--;
+                timerEl.textContent = timeLeft;
+
+                if (timeLeft <= 0 && gameInterval) { // Ensure game hasn't already ended
+                    endGame();
+                }
+            }, 1000);
+
+            // Re-enable start button shortly after starting
+             setTimeout(() => {
+                 // Check if game is still running before enabling
+                 if (gameInterval) {
+                    startButton.disabled = false;
+                 }
+             }, 1000);
+        }
+
+        // End the game
+        function endGame() {
+            // Prevent multiple calls
+            if (!gameInterval) return;
+
+            playSound.gameOver();
+            // Clear all intervals and timeouts
+            if (gameInterval) clearInterval(gameInterval); gameInterval = null;
+            if (stlrTimeout) clearInterval(stlrTimeout); stlrTimeout = null;
+            if (forgettingTimeout) clearTimeout(forgettingTimeout); forgettingTimeout = null;
+            if (penaltyWindowTimeout) clearTimeout(penaltyWindowTimeout); penaltyWindowTimeout = null;
+
+             // Reset active states
+             stlrActive = false;
+             bossModeActive = false;
+             penaltyWindowActive = false;
+             stlrScoreMultiplier = 1;
+
+
+            textSnippetEl.textContent = `Game Over! Final Score: ${score}`;
+            buttonsContainer.innerHTML = ''; // Clear buttons
+            startButton.disabled = false; // Allow restarting
+            stlrButton.disabled = true; // Disable STLR button post-game
+            gameContainer.classList.remove('boss-mode'); // Ensure boss style is removed
+
+            // Clear indicators
+            stlrIndicator.textContent = ""; stlrIndicator.style.opacity = 0;
+            forgettingIndicator.textContent = "";
+            penaltyIndicator.textContent = ""; penaltyIndicator.style.opacity = 0;
+            bossIndicator.textContent = "";
+
+
+            showMessage(`Game Over! Reached Stage ${currentStage}. Final Score: ${score}!`, 5000);
+        }
+
+        // --- Event Listeners ---
+        startButton.addEventListener('click', startGame);
+        stlrButton.addEventListener('click', activateSTLR);
+
+        // --- Initial Setup ---
+        stlrButton.disabled = true;
+        stlrIndicator.style.opacity = 0;
+        penaltyIndicator.style.opacity = 0;
+
+    </script>
+</body>
+</html>
