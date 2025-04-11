@@ -45,13 +45,16 @@
             padding: 0.5rem 1rem; margin-bottom: 0.5rem; border-radius: 0.5rem; cursor: grab;
             text-align: left; font-weight: 500; transition: all 0.2s ease-in-out;
             position: relative; user-select: none; min-height: 38px; display: block;
+            font-family: monospace; /* Use monospace for Pythonic view */
+            font-size: 0.9em;
+            line-height: 1.4;
         }
         .ft-component:hover { transform: translateY(-2px); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .ft-component:active { cursor: grabbing; background-color: #c7d2fe; transform: translateY(0px); box-shadow: none; }
         .ft-component::after {
             content: 'Cost: ' attr(data-cost); position: absolute; bottom: 2px; right: 5px;
             font-size: 0.65rem; color: #4338ca; background-color: rgba(255, 255, 255, 0.7);
-            padding: 1px 3px; border-radius: 3px;
+            padding: 1px 3px; border-radius: 3px; font-family: 'Inter', sans-serif; /* Reset font */
          }
         /* Builder Area Styling */
         .builder-dropzone {
@@ -68,25 +71,38 @@
             border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 12px;
             line-height: 20px; text-align: center; cursor: pointer; opacity: 0;
             transition: opacity 0.2s, background-color 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.2);
-            z-index: 10;
+            z-index: 10; font-family: 'Inter', sans-serif; /* Reset font */
         }
          .builder-dropzone .ft-component .attr-button:hover { background-color: #4338ca; }
          .builder-dropzone .ft-component:hover .attr-button { opacity: 1; }
         /* Editable Text Styling */
         .editable-text {
-            display: inline-block; border-bottom: 1px dashed #9ca3af; padding: 0 2px;
-            margin: 0 4px; min-width: 50px; cursor: text;
+            display: inline; /* Change to inline for better fit */
+            border-bottom: 1px dashed #9ca3af; padding: 0 2px; margin: 0; /* Adjust spacing */
+            min-width: 20px; /* Smaller min width */ cursor: text;
+            background-color: rgba(254, 249, 195, 0.5); /* Light yellow hint */
+            border-radius: 2px;
         }
         .editable-text:focus {
             outline: none; background-color: #fef9c3; border-bottom: 1px solid #4f46e5;
         }
+         /* Style for Pythonic representation */
+        .ft-repr-tag { font-weight: bold; color: #1d4ed8; } /* Blue */
+        .ft-repr-paren { color: #555; }
+        .ft-repr-comma { color: #999; margin-left: 2px; margin-right: 4px;}
+        .ft-repr-attr-key { color: #991b1b; } /* Dark Red */
+        .ft-repr-attr-val { color: #166534; } /* Dark Green */
+        .ft-repr-attr-sep { color: #555; }
+
          /* Nested dropzone styling */
         .nested-dropzone {
-            margin-left: 1rem; margin-top: 0.5rem; padding: 0.5rem; border: 1px dashed #d1d5db;
-            border-radius: 0.375rem; min-height: 40px; background-color: rgba(243, 244, 246, 0.5);
+            margin-left: 1.5rem; /* Indent more */ margin-top: 0.25rem; padding: 0.5rem;
+            border-left: 2px solid #e5e7eb; /* Left border for visual hierarchy */
+            border-top: none; border-right: none; border-bottom: none; /* Remove other borders */
+            border-radius: 0; min-height: 40px; background-color: transparent; /* Cleaner look */
         }
          .nested-dropzone.drag-over { background-color: #e0e7ff; }
-        .dropzone-placeholder { color: #9ca3af; text-align: center; padding: 1rem; pointer-events: none; }
+        .dropzone-placeholder { color: #9ca3af; text-align: center; padding: 1rem; pointer-events: none; font-family: 'Inter', sans-serif; }
         /* Target Output Styling */
         .target-output pre {
             background-color: #1f2937; color: #d1d5db; padding: 1rem; border-radius: 0.5rem;
@@ -107,7 +123,7 @@
         }
         .modal-content {
             background-color: #fefefe; margin: 10% auto; padding: 25px; border: 1px solid #888;
-            width: 90%; max-width: 600px; /* Wider modal */ border-radius: 0.75rem;
+            width: 90%; max-width: 600px; border-radius: 0.75rem;
             box-shadow: 0 10px 25px rgba(0,0,0,0.2);
         }
         .close-button {
@@ -139,6 +155,9 @@
          }
         .game-button.reset { background-image: linear-gradient(to bottom, #ef4444, #dc2626); }
          .game-button.reset:hover { background-image: linear-gradient(to bottom, #dc2626, #b91c1c); }
+        .game-button.skip { background-image: linear-gradient(to bottom, #f59e0b, #d97706); } /* Amber */
+         .game-button.skip:hover { background-image: linear-gradient(to bottom, #d97706, #b45309); }
+
          /* Feedback Styling */
          #feedback { min-height: 1.5em; transition: all 0.3s ease-in-out; }
         .feedback-correct { color: #16a34a; transform: scale(1.05); }
@@ -190,7 +209,10 @@
         </aside>
 
         <main class="builder-area panel">
-            <h2 class="text-xl font-semibold mb-4 text-indigo-700 game-font">Builder</h2>
+            <div class="flex justify-between items-center mb-2">
+                 <h2 class="text-xl font-semibold text-indigo-700 game-font">Builder</h2>
+                 <span class="text-xs text-gray-500 font-mono">@rt(...)\ndef handler(): return (...)</span>
+            </div>
             <div id="builder-dropzone" class="builder-dropzone">
                 <p class="dropzone-placeholder">Drag FastTags here</p>
             </div>
@@ -207,7 +229,7 @@
         <footer class="footer-area text-center py-4">
              <button id="check-button" class="game-button">Check!</button>
              <button id="reset-button" class="game-button reset">Reset</button>
-             <p id="feedback" class="mt-2 font-semibold"></p>
+             <button id="skip-level-button" class="game-button skip">Skip</button> <p id="feedback" class="mt-2 font-semibold"></p>
         </footer>
     </div>
 
@@ -316,9 +338,10 @@
         const wiringInfo = document.getElementById('wiring-info');
         const checkButton = document.getElementById('check-button');
         const resetButton = document.getElementById('reset-button');
+        const skipLevelButton = document.getElementById('skip-level-button'); // Skip Button
         const feedbackDisplay = document.getElementById('feedback');
         // Modal Elements
-        const attributeModal = document.getElementById('attribute-modal'); // Renamed modal ID
+        const attributeModal = document.getElementById('attribute-modal');
         const modalElementIdInput = document.getElementById('modal-element-id');
         // Standard Attribute Inputs
         const attrIdInput = document.getElementById('attr-id');
@@ -340,8 +363,8 @@
 
         // --- Level Definitions ---
         levels = {
-            1: { // Structure only
-                story: "Welcome, rookie! Task 1: Basic structure. Drag an H1 then a P tag below.",
+             1: { // Structure only
+                story: "Welcome, rookie! Task 1: Basic structure. Drag H1 then P into the 'return (...)' below.",
                 request: "GET /", description: "Return a heading element and a paragraph element.",
                 palette: ['H1', 'P'], budget: 3,
                 targetHTML: `<h1>[Any Text]</h1>\n<p>[Any Text]</p>`,
@@ -374,6 +397,7 @@
             }
             // TODO: Add levels for Input attributes (name, type, placeholder), hx-swap, etc.
         };
+        const maxLevel = Object.keys(levels).length; // Get max level number
 
         // --- Initialization ---
         function initGame() {
@@ -381,6 +405,13 @@
             setupDragAndDrop();
             checkButton.addEventListener('click', checkAnswer);
             resetButton.addEventListener('click', () => loadLevel(currentLevel));
+            // Skip Level Button Listener
+            skipLevelButton.addEventListener('click', () => {
+                if (currentLevel < maxLevel) {
+                    currentLevel++;
+                    loadLevel(currentLevel);
+                }
+            });
         }
 
         // --- Level Loading ---
@@ -390,8 +421,9 @@
                 storyBox.textContent = "Wow, you're a FastHTML Pro! You've completed all challenges!";
                 feedbackDisplay.textContent = "Congratulations! Game Complete!";
                 feedbackDisplay.className = 'mt-2 font-semibold feedback-correct';
-                checkButton.disabled = true; resetButton.disabled = true; requestDisplay.textContent = "-";
-                targetOutputCode.textContent = "You Win!"; wiringInfo.textContent = ""; ftPalette.innerHTML = "";
+                checkButton.disabled = true; resetButton.disabled = true; skipLevelButton.disabled = true; // Disable skip on win
+                requestDisplay.textContent = "-"; targetOutputCode.textContent = "You Win!";
+                wiringInfo.textContent = ""; ftPalette.innerHTML = "";
                 builderDropzone.innerHTML = '<p class="dropzone-placeholder font-bold text-xl game-font">YOU WIN!</p>';
                 return;
             }
@@ -402,13 +434,16 @@
             requestDisplay.innerHTML = `<strong>Request:</strong> ${levelData.request} <br> <strong>Task:</strong> ${levelData.description}`;
             targetOutputCode.textContent = levelData.targetHTML;
             feedbackDisplay.textContent = ''; feedbackDisplay.className = 'mt-2 font-semibold';
-            checkButton.disabled = false;
+            checkButton.disabled = false; skipLevelButton.disabled = (currentLevel >= maxLevel); // Disable skip if on last level
+
             ftPalette.innerHTML = ''; builderDropzone.innerHTML = '<p class="dropzone-placeholder">Drag FastTags here</p>';
             clearHtmxConnections(); wiringInfo.textContent = '';
             levelData.palette.forEach(tag => {
                 const cost = componentCosts[tag] || 0; const el = document.createElement('div');
-                el.classList.add('ft-component'); el.textContent = `<${tag}>`; el.draggable = true;
-                el.dataset.tag = tag; el.dataset.cost = cost; ftPalette.appendChild(el);
+                el.classList.add('ft-component');
+                // Show Pythonic representation in palette
+                el.innerHTML = `<span class="ft-repr-tag">${tag}</span><span class="ft-repr-paren">(</span>...<span class="ft-repr-paren">)</span>`;
+                el.draggable = true; el.dataset.tag = tag; el.dataset.cost = cost; ftPalette.appendChild(el);
             });
             if (levelData.wiring && levelData.wiring.length > 0) {
                 wiringInfo.innerHTML = '<strong class="text-indigo-700">HTMX Wiring Required:</strong><ul>';
@@ -448,10 +483,11 @@
             builderDropzone.addEventListener('dragstart', (e) => {
                  if (e.target.classList.contains('ft-component')) {
                      draggedElement = e.target;
+                     const textData = e.target.dataset.text !== undefined ? e.target.dataset.text : '';
                      e.dataTransfer.setData('text/plain', JSON.stringify({
                          tag: e.target.dataset.tag, cost: e.target.dataset.cost, id: e.target.id,
-                         htmx: e.target.dataset.htmx, text: e.target.dataset.text,
-                         attrs: { // Transfer standard attrs too
+                         htmx: e.target.dataset.htmx, text: textData,
+                         attrs: {
                              id: e.target.id, class: e.target.className.replace('ft-component','').trim(),
                              name: e.target.getAttribute('name'), value: e.target.getAttribute('value'),
                              type: e.target.getAttribute('type'), placeholder: e.target.getAttribute('placeholder')
@@ -498,15 +534,14 @@
                 }
             } else if (data.tag) {
                 const newElement = createBuilderElement(data.tag, data.cost);
-                // Restore attributes if moving (though unlikely needed for new elements)
                 if(data.htmx) newElement.dataset.htmx = data.htmx;
-                if(data.text) {
+                if(data.text !== undefined) {
                     newElement.dataset.text = data.text;
                     const textSpan = newElement.querySelector('.editable-text');
                     if(textSpan) textSpan.textContent = data.text;
                 }
-                if(data.attrs) { // Restore standard attributes
-                    if(data.attrs.id) newElement.id = data.attrs.id; // Restore original ID if moved
+                if(data.attrs) {
+                    if(data.attrs.id && !data.attrs.id.startsWith('builder-el-')) newElement.id = data.attrs.id;
                     if(data.attrs.class) newElement.className = `ft-component ${data.attrs.class}`;
                     if(data.attrs.name) newElement.setAttribute('name', data.attrs.name);
                     if(data.attrs.value) newElement.setAttribute('value', data.attrs.value);
@@ -519,7 +554,7 @@
             draggedElement = null;
         }
 
-        // --- Create Builder Element with Editable Text ---
+        // --- Create Builder Element with Pythonic Representation ---
         function createBuilderElement(tag, cost) {
             const id = `builder-el-${Date.now()}-${Math.random().toString(16).slice(2)}`;
             const el = document.createElement('div');
@@ -527,46 +562,68 @@
             el.id = id; el.draggable = true; el.dataset.tag = tag;
             el.dataset.cost = cost || componentCosts[tag] || 0; el.dataset.htmx = JSON.stringify({});
 
+            // Build Pythonic Representation
+            el.innerHTML = ''; // Clear existing content if any
+            const tagSpan = document.createElement('span');
+            tagSpan.className = 'ft-repr-tag';
+            tagSpan.textContent = tag;
+            el.appendChild(tagSpan);
+
+            el.appendChild(document.createTextNode('(')); // Opening parenthesis
+
             const isTextEditable = ['P', 'H1', 'H2', 'Button', 'Span', 'A', 'Li'].includes(tag);
             let initialText = '';
 
             if (isTextEditable) {
-                initialText = `[Edit ${tag} Text]`; // Clearer placeholder
-                el.dataset.text = initialText;
+                initialText = `"[Edit Text]"`; // Default text in quotes
+                el.dataset.text = initialText.slice(1,-1); // Store without quotes
+
                 const textSpan = document.createElement('span');
-                textSpan.className = 'editable-text'; textSpan.textContent = initialText;
-                textSpan.contentEditable = "true"; textSpan.spellcheck = false;
-                textSpan.addEventListener('blur', (e) => { el.dataset.text = e.target.textContent.trim(); });
-                // FIX: Select all text on focus for easier editing/deletion
+                textSpan.className = 'editable-text';
+                textSpan.textContent = initialText;
+                textSpan.contentEditable = "true";
+                textSpan.spellcheck = false;
+                textSpan.addEventListener('blur', (e) => {
+                    const newText = e.target.textContent.trim();
+                    // Store raw text, add quotes back for display if needed
+                    el.dataset.text = newText;
+                    e.target.textContent = `"${newText}"`; // Display with quotes
+                });
                 textSpan.addEventListener('focus', (e) => {
-                    window.setTimeout(() => { // Timeout needed for selection to work reliably
-                         const selection = window.getSelection();
-                         const range = document.createRange();
-                         range.selectNodeContents(e.target);
-                         selection.removeAllRanges();
-                         selection.addRange(range);
+                    // Select text inside quotes
+                    e.target.textContent = el.dataset.text; // Show raw text for editing
+                    window.setTimeout(() => {
+                         try {
+                             const selection = window.getSelection(); const range = document.createRange();
+                             range.selectNodeContents(e.target);
+                             selection.removeAllRanges(); selection.addRange(range);
+                         } catch (err) { console.error("Error selecting text on focus:", err); }
                     }, 1);
                 });
                 textSpan.addEventListener('mousedown', e => e.stopPropagation());
                 el.appendChild(textSpan);
             }
 
-            const tagSpan = document.createElement('span');
-            tagSpan.style.fontWeight = 'normal'; tagSpan.style.opacity = '0.7';
-            tagSpan.style.marginLeft = isTextEditable ? '5px' : '0';
-            tagSpan.textContent = `<${tag}>`; el.appendChild(tagSpan);
+            // Placeholder for attributes (will be updated by saveAttributes)
+            const attrsSpan = document.createElement('span');
+            attrsSpan.className = 'attributes-display ml-1'; // Added margin-left
+            el.appendChild(attrsSpan);
 
-            const configButton = document.createElement('button');
-            configButton.className = 'attr-button'; configButton.title = 'Edit Attributes'; configButton.innerHTML = '⚙️';
-            configButton.onclick = (event) => { event.stopPropagation(); openAttributeModal(id); }; // Updated function call
-            el.appendChild(configButton);
-
-            if (['Div', 'Form', 'Ul', 'Li', 'P'].includes(tag)) {
+            // Nested dropzone (if applicable)
+            const canNest = ['Div', 'Form', 'Ul', 'Li', 'P'].includes(tag);
+            if (canNest) {
+                 // Add comma if text or attributes are present
+                 if (isTextEditable || Object.keys(JSON.parse(el.dataset.htmx || '{}')).length > 0 || el.id || el.className !== 'ft-component') {
+                     const comma = document.createElement('span');
+                     comma.className = 'ft-repr-comma';
+                     comma.textContent = ',';
+                     el.appendChild(comma);
+                 }
                 const nestedZone = document.createElement('div');
                 nestedZone.classList.add('nested-dropzone'); nestedZone.dataset.parent = id;
                 const nestedPlaceholder = document.createElement('p');
                 nestedPlaceholder.classList.add('dropzone-placeholder');
-                nestedPlaceholder.textContent = `Drop <${tag}> children here`;
+                nestedPlaceholder.textContent = `Drop children here`;
                 nestedZone.appendChild(nestedPlaceholder); el.appendChild(nestedZone);
                 nestedZone.addEventListener('dragover', handleDragOver);
                 nestedZone.addEventListener('dragleave', handleDragLeave);
@@ -576,6 +633,17 @@
                 });
             }
 
+             el.appendChild(document.createTextNode(')')); // Closing parenthesis
+
+
+            // Add config button (absolutely positioned)
+            const configButton = document.createElement('button');
+            configButton.className = 'attr-button'; configButton.title = 'Edit Attributes'; configButton.innerHTML = '⚙️';
+            configButton.onclick = (event) => { event.stopPropagation(); openAttributeModal(id); };
+            el.appendChild(configButton);
+
+
+            // Click listener for target selection mode
             el.addEventListener('click', (e) => {
                 if (selectingTarget && currentTargetElementId && currentTargetElementId !== id) {
                     e.stopPropagation(); const targetSelector = `#${el.id}`;
@@ -589,25 +657,79 @@
                     document.body.style.cursor = 'default'; attributeModal.style.display = "block";
                 }
             });
+
+            updateAttributeDisplay(el); // Initial attribute display update
             return el;
         }
 
+        // --- Update Pythonic Attribute Display ---
+        function updateAttributeDisplay(element) {
+            if (!element) return;
+            const attrsSpan = element.querySelector('.attributes-display');
+            if (!attrsSpan) return;
+
+            let displayHtml = '';
+            const htmxData = JSON.parse(element.dataset.htmx || '{}');
+            const stdAttrs = {};
+            if (element.id && !element.id.startsWith('builder-el-')) stdAttrs.id = element.id;
+            const classes = Array.from(element.classList).filter(c => c !== 'ft-component');
+            if (classes.length > 0) stdAttrs.cls = classes.join(' '); // Use 'cls' for display
+            ['name', 'value', 'type', 'placeholder'].forEach(attr => {
+                if (element.hasAttribute(attr)) stdAttrs[attr] = element.getAttribute(attr);
+            });
+
+            const allAttrs = {...stdAttrs};
+            // Add HTMX attributes for display
+            if (htmxData.verb && htmxData.url) allAttrs[`hx_${htmxData.verb}`] = htmxData.url; // Use hx_verb format
+            if (htmxData.trigger) allAttrs.hx_trigger = htmxData.trigger;
+            if (htmxData.targetValue) allAttrs.hx_target = htmxData.targetValue;
+            if (htmxData.swap && htmxData.swap !== 'innerHTML') allAttrs.hx_swap = htmxData.swap;
+
+            const isTextPresent = element.querySelector('.editable-text');
+            let firstAttr = !isTextPresent; // If no text, first attr doesn't need leading comma
+
+            Object.entries(allAttrs).forEach(([key, value]) => {
+                if (!firstAttr) {
+                    displayHtml += `<span class="ft-repr-comma">,</span>`;
+                }
+                displayHtml += `<span class="ft-repr-attr-key">${key}</span><span class="ft-repr-attr-sep">=</span><span class="ft-repr-attr-val">"${value}"</span>`;
+                firstAttr = false;
+            });
+
+            attrsSpan.innerHTML = displayHtml;
+
+             // Adjust comma before nested zone if needed
+             const commaBeforeNested = element.querySelector('.ft-repr-comma:last-of-type'); // Find comma potentially before nested zone
+             const nestedZone = element.querySelector('.nested-dropzone');
+             if(nestedZone && commaBeforeNested) {
+                 if(!isTextPresent && Object.keys(allAttrs).length === 0) {
+                     commaBeforeNested.style.display = 'none'; // Hide comma if nothing precedes nested zone
+                 } else {
+                     commaBeforeNested.style.display = 'inline';
+                 }
+             }
+        }
+
+
         // --- Attribute Modal & Wiring ---
-        function openAttributeModal(elementId) { // Renamed function
+        function openAttributeModal(elementId) {
              if (selectingTarget) return;
             const element = document.getElementById(elementId); if (!element) return;
+            console.log("Opening modal for element:", elementId, element);
             modalElementIdInput.value = elementId;
              let currentHtmxData = {}; try { currentHtmxData = JSON.parse(element.dataset.htmx || '{}'); } catch {}
 
-            // Load Standard Attributes
-            attrIdInput.value = element.id.startsWith('builder-el-') ? '' : element.id; // Don't show builder ID
-            attrClassInput.value = element.className.replace('ft-component','').trim();
+            const currentId = element.id || '';
+            const currentClasses = Array.from(element.classList).filter(c => c !== 'ft-component').join(' ');
+            console.log("Loading standard attrs:", { id: currentId, classes: currentClasses });
+            attrIdInput.value = currentId.startsWith('builder-el-') ? '' : currentId;
+            attrClassInput.value = currentClasses;
             attrNameInput.value = element.getAttribute('name') || '';
             attrValueInput.value = element.getAttribute('value') || '';
             attrTypeInput.value = element.getAttribute('type') || '';
             attrPlaceholderInput.value = element.getAttribute('placeholder') || '';
 
-            // Load HTMX Attributes
+            console.log("Loading HTMX attrs:", currentHtmxData);
             htmxVerbSelect.value = currentHtmxData.verb || '';
             htmxUrlInput.value = currentHtmxData.url || '';
             htmxTriggerInput.value = currentHtmxData.trigger || '';
@@ -616,7 +738,7 @@
             htmxSwapSelect.value = currentHtmxData.swap || 'innerHTML';
 
             toggleTargetInput(htmxTargetModeSelect.value);
-            openTab(null, 'standard-attrs'); // Default to standard tab
+            openTab(null, 'standard-attrs');
             attributeModal.style.display = "block";
         }
         function closeModal() {
@@ -645,28 +767,28 @@
                 else { comp.style.pointerEvents = 'auto'; comp.style.opacity = '1'; }
             });
         }
-        function saveAttributes() { // Renamed function
+        function saveAttributes() {
             const elementId = modalElementIdInput.value;
-            const element = document.getElementById(elementId); if (!element) return;
+            const element = document.getElementById(elementId);
+            if (!element) { console.error("Could not find element:", elementId); return; }
+            console.log("Saving attributes for element:", elementId);
 
             // Save Standard Attributes
             const newId = attrIdInput.value.trim();
-            // Basic ID validation (optional): check for spaces, ensure uniqueness if needed
-            if (newId && !newId.match(/^[a-zA-Z0-9-_]+$/)) {
-                alert("Invalid ID format. Use letters, numbers, hyphens, underscores."); return;
+            if (newId && !newId.match(/^[a-zA-Z][a-zA-Z0-9-_]*$/)) {
+                alert("Invalid ID format. Must start with a letter and contain only letters, numbers, hyphens, underscores."); return;
             }
-            // Only set ID if provided, otherwise keep the builder ID
             if (newId) element.id = newId;
-            // Set class, ensuring ft-component is always present
-            element.className = ('ft-component ' + attrClassInput.value.trim()).trim();
-            // Set other attributes, removing them if empty
-            ['name', 'value', 'type', 'placeholder'].forEach(attr => {
-                const input = document.getElementById(`attr-${attr}`);
-                const value = input.value.trim();
-                if (value) element.setAttribute(attr, value);
-                else element.removeAttribute(attr);
-            });
+            else if (!element.id.startsWith('builder-el-')) element.removeAttribute('id');
 
+            const userClasses = attrClassInput.value.trim().split(/\s+/).filter(Boolean);
+            element.className = ['ft-component', ...userClasses].join(' ');
+
+            ['name', 'value', 'type', 'placeholder'].forEach(attr => {
+                const input = document.getElementById(`attr-${attr}`); if (!input) return;
+                const value = input.value.trim();
+                if (value) element.setAttribute(attr, value); else element.removeAttribute(attr);
+            });
 
             // Save HTMX Attributes
             const htmxData = {
@@ -678,11 +800,13 @@
             if (htmxData.targetMode !== 'this' && !htmxData.targetValue) { alert("Please provide a target selector or choose 'this'."); return; }
             element.dataset.htmx = JSON.stringify(htmxData);
 
+            updateAttributeDisplay(element); // Update the Pythonic display
             closeModal(); drawHtmxConnections();
             feedbackDisplay.textContent = "Attributes saved.";
             feedbackDisplay.className = 'mt-2 font-semibold text-green-600';
-             const sourceElement = document.getElementById(elementId);
+             const sourceElement = document.getElementById(elementId); // Re-fetch in case ID changed
              if(sourceElement) { sourceElement.style.pointerEvents = 'auto'; sourceElement.style.opacity = '1'; }
+             console.log("Save complete for:", elementId);
         }
         // --- Visual HTMX Wiring ---
         function drawHtmxConnections() {
@@ -724,7 +848,7 @@
                 setTimeout(() => loadLevel(currentLevel), 1500);
             } else {
                  let errorMsg = "Incorrect. ";
-                 if (!structureMatch) errorMsg += "Structure/Text/Attributes don't match. "; // Updated message
+                 if (!structureMatch) errorMsg += "Structure/Text/Attributes don't match. ";
                  if (!wiringMatch) errorMsg += "HTMX wiring is wrong. ";
                  if (!budgetMatch) errorMsg += `Budget exceeded! (Used: ${currentCost}/${levelData.budget}) `;
                 feedbackDisplay.textContent = errorMsg.trim();
@@ -733,7 +857,7 @@
             }
         }
 
-        // --- Structure Extraction & Comparison (Handles data-text & standard attrs) ---
+        // --- Structure Extraction & Comparison ---
         function getBuilderStructure(parentElement) {
             const structure = [];
             const childElements = Array.from(parentElement.children).filter(el =>
@@ -743,7 +867,7 @@
                 const tag = el.dataset.tag;
                 let htmxData = {}; try { htmxData = JSON.parse(el.dataset.htmx || '{}'); } catch {}
                 const attributes = {};
-                let text = el.dataset.text || '';
+                let text = el.dataset.text !== undefined ? el.dataset.text : '';
 
                 // Get Standard Attributes
                 if (el.id && !el.id.startsWith('builder-el-')) attributes['id'] = el.id;
@@ -772,21 +896,15 @@
             for (let i = 0; i < target.length; i++) {
                 const builtItem = built[i]; const targetItem = target[i];
                 if (!builtItem || !targetItem || builtItem.tag !== targetItem.tag) return false;
-                const normalizeText = (str) => (str || '').replace(/\s+/g, ' ').trim();
-                if (targetItem.text !== null && normalizeText(builtItem.text) !== normalizeText(targetItem.text)) return false;
+                const normalizeText = (str) => (str === null || str === undefined) ? null : String(str).replace(/\s+/g, ' ').trim();
+                const targetTextNorm = normalizeText(targetItem.text);
+                if (targetTextNorm !== null && normalizeText(builtItem.text) !== targetTextNorm) return false;
 
                 const builtAttrs = builtItem.attributes || {}; const targetAttrs = targetItem.attributes || {};
                 const tempBuiltAttrs = {...builtAttrs};
-                // Always ignore builder ID from built item for comparison unless target explicitly has it
-                if (tempBuiltAttrs.id && tempBuiltAttrs.id.startsWith('builder-el-') && tempBuiltAttrs.id !== targetAttrs.id) {
-                    delete tempBuiltAttrs.id;
-                }
-                // Also remove target ID if it's a builder ID (shouldn't happen often, but safety)
+                if (tempBuiltAttrs.id && tempBuiltAttrs.id.startsWith('builder-el-') && tempBuiltAttrs.id !== targetAttrs.id) delete tempBuiltAttrs.id;
                 const tempTargetAttrs = {...targetAttrs};
-                 if (tempTargetAttrs.id && tempTargetAttrs.id.startsWith('builder-el-') && tempTargetAttrs.id !== tempBuiltAttrs.id) {
-                    delete tempTargetAttrs.id;
-                }
-
+                 if (tempTargetAttrs.id && tempTargetAttrs.id.startsWith('builder-el-') && tempTargetAttrs.id !== tempBuiltAttrs.id) delete tempTargetAttrs.id;
                 const builtKeys = Object.keys(tempBuiltAttrs); const targetKeys = Object.keys(tempTargetAttrs);
                 const normalizeClass = (clsStr) => (clsStr || '').split(' ').filter(Boolean).sort().join(' ');
                 const builtClassNorm = normalizeClass(tempBuiltAttrs.class); const targetClassNorm = normalizeClass(tempTargetAttrs.class);
@@ -799,7 +917,7 @@
             return true;
         }
 
-        // --- Wiring Check (Unchanged) ---
+        // --- Wiring Check ---
         function checkWiring(requiredWiring, builtStructure) {
             if (!requiredWiring || requiredWiring.length === 0) return true;
             const elementsMap = new Map();
@@ -832,17 +950,12 @@
 
         // --- Modal Tabs ---
         function openTab(evt, tabName) {
-            // Hide all tab content
             document.querySelectorAll('.modal-tab-content').forEach(tab => tab.style.display = 'none');
-            // Remove active class from all tabs
             document.querySelectorAll('.modal-tab').forEach(tab => tab.classList.remove('active'));
-            // Show the selected tab content
             document.getElementById(tabName).style.display = 'block';
-            // Add active class to the clicked tab button
             if(evt) evt.currentTarget.classList.add('active');
-            else document.querySelector(`.modal-tab[onclick*="${tabName}"]`).classList.add('active'); // Activate first tab by default if no event
+            else document.querySelector(`.modal-tab[onclick*="${tabName}"]`).classList.add('active');
         }
-
 
         // --- Window Load & Events ---
         window.onload = initGame;
