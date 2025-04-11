@@ -538,7 +538,7 @@
                 if(data.text !== undefined) {
                     newElement.dataset.text = data.text;
                     const textSpan = newElement.querySelector('.editable-text');
-                    if(textSpan) textSpan.textContent = data.text;
+                    if(textSpan) textSpan.textContent = `"${data.text}"`; // Display with quotes
                 }
                 if(data.attrs) {
                     if(data.attrs.id && !data.attrs.id.startsWith('builder-el-')) newElement.id = data.attrs.id;
@@ -549,6 +549,7 @@
                     if(data.attrs.placeholder) newElement.setAttribute('placeholder', data.attrs.placeholder);
                 }
                 dropZone.appendChild(newElement);
+                updateAttributeDisplay(newElement); // Update display after setting attrs
                 updateBudgetDisplay();
             }
             draggedElement = null;
@@ -575,22 +576,20 @@
             let initialText = '';
 
             if (isTextEditable) {
-                initialText = `"[Edit Text]"`; // Default text in quotes
-                el.dataset.text = initialText.slice(1,-1); // Store without quotes
+                initialText = `[Edit Text]`; // Default raw text
+                el.dataset.text = initialText; // Store initial text
 
                 const textSpan = document.createElement('span');
                 textSpan.className = 'editable-text';
-                textSpan.textContent = initialText;
+                textSpan.textContent = `"${initialText}"`; // Display with quotes
                 textSpan.contentEditable = "true";
                 textSpan.spellcheck = false;
                 textSpan.addEventListener('blur', (e) => {
                     const newText = e.target.textContent.trim();
-                    // Store raw text, add quotes back for display if needed
                     el.dataset.text = newText;
                     e.target.textContent = `"${newText}"`; // Display with quotes
                 });
                 textSpan.addEventListener('focus', (e) => {
-                    // Select text inside quotes
                     e.target.textContent = el.dataset.text; // Show raw text for editing
                     window.setTimeout(() => {
                          try {
@@ -612,13 +611,13 @@
             // Nested dropzone (if applicable)
             const canNest = ['Div', 'Form', 'Ul', 'Li', 'P'].includes(tag);
             if (canNest) {
-                 // Add comma if text or attributes are present
-                 if (isTextEditable || Object.keys(JSON.parse(el.dataset.htmx || '{}')).length > 0 || el.id || el.className !== 'ft-component') {
-                     const comma = document.createElement('span');
-                     comma.className = 'ft-repr-comma';
-                     comma.textContent = ',';
-                     el.appendChild(comma);
-                 }
+                 // Add comma placeholder (visibility controlled by updateAttributeDisplay)
+                 const comma = document.createElement('span');
+                 comma.className = 'ft-repr-comma';
+                 comma.textContent = ',';
+                 comma.style.display = 'none'; // Hide initially
+                 el.appendChild(comma);
+
                 const nestedZone = document.createElement('div');
                 nestedZone.classList.add('nested-dropzone'); nestedZone.dataset.parent = id;
                 const nestedPlaceholder = document.createElement('p');
@@ -666,6 +665,8 @@
         function updateAttributeDisplay(element) {
             if (!element) return;
             const attrsSpan = element.querySelector('.attributes-display');
+            const commaBeforeNested = element.querySelector('.ft-repr-comma');
+            const nestedZone = element.querySelector('.nested-dropzone');
             if (!attrsSpan) return;
 
             let displayHtml = '';
@@ -692,21 +693,18 @@
                 if (!firstAttr) {
                     displayHtml += `<span class="ft-repr-comma">,</span>`;
                 }
-                displayHtml += `<span class="ft-repr-attr-key">${key}</span><span class="ft-repr-attr-sep">=</span><span class="ft-repr-attr-val">"${value}"</span>`;
+                // Escape HTML in attribute values for display
+                const escapedValue = value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+                displayHtml += `<span class="ft-repr-attr-key">${key}</span><span class="ft-repr-attr-sep">=</span><span class="ft-repr-attr-val">"${escapedValue}"</span>`;
                 firstAttr = false;
             });
 
             attrsSpan.innerHTML = displayHtml;
 
-             // Adjust comma before nested zone if needed
-             const commaBeforeNested = element.querySelector('.ft-repr-comma:last-of-type'); // Find comma potentially before nested zone
-             const nestedZone = element.querySelector('.nested-dropzone');
-             if(nestedZone && commaBeforeNested) {
-                 if(!isTextPresent && Object.keys(allAttrs).length === 0) {
-                     commaBeforeNested.style.display = 'none'; // Hide comma if nothing precedes nested zone
-                 } else {
-                     commaBeforeNested.style.display = 'inline';
-                 }
+             // Show/hide comma before nested zone
+             if(commaBeforeNested) {
+                 const hasPrecedingContent = isTextPresent || Object.keys(allAttrs).length > 0;
+                 commaBeforeNested.style.display = hasPrecedingContent && nestedZone ? 'inline' : 'none';
              }
         }
 
@@ -779,7 +777,7 @@
                 alert("Invalid ID format. Must start with a letter and contain only letters, numbers, hyphens, underscores."); return;
             }
             if (newId) element.id = newId;
-            else if (!element.id.startsWith('builder-el-')) element.removeAttribute('id');
+            else if (element.id && !element.id.startsWith('builder-el-')) element.removeAttribute('id'); // Only remove if it's not a builder ID
 
             const userClasses = attrClassInput.value.trim().split(/\s+/).filter(Boolean);
             element.className = ['ft-component', ...userClasses].join(' ');
@@ -796,8 +794,15 @@
                 trigger: htmxTriggerInput.value.trim(), targetMode: htmxTargetModeSelect.value,
                 targetValue: htmxTargetValueInput.value.trim(), swap: htmxSwapSelect.value,
             };
-            if (htmxData.verb && !htmxData.url) { alert("Please provide a URL for the selected hx-* action."); return; }
-            if (htmxData.targetMode !== 'this' && !htmxData.targetValue) { alert("Please provide a target selector or choose 'this'."); return; }
+            // FIX: Only validate target if an HTMX action verb is selected
+            if (htmxData.verb && htmxData.targetMode !== 'this' && !htmxData.targetValue) {
+                alert("Please provide a target selector (or choose 'this') when using an hx-* action.");
+                return;
+            }
+            if (htmxData.verb && !htmxData.url) {
+                 alert("Please provide a URL for the selected hx-* action.");
+                 return;
+            }
             element.dataset.htmx = JSON.stringify(htmxData);
 
             updateAttributeDisplay(element); // Update the Pythonic display
