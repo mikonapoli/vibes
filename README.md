@@ -5,3 +5,4 @@ Repo for "vibe coded" stuff
 Inspired by [this tweet](https://x.com/emollick/status/1910534521998487709)
 
 * [ULMFiT Game](https://mikonapoli.github.io/vibes/ulmfit.html) - Built with Gemini 2.5 Pro with canvas based on [this paper](https://arxiv.org/abs/1801.06146)
+* [Black Hole Merger Game](https://mikonapoli.github.io/vibes/bhmerger.html) - Built with Gemini 2.5 Pro with canvas based on [this paper](https://arxiv.org/abs/2104.10265)
