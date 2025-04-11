@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Binary Black Hole Merger Game (AI vs Player)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        body {
+            margin: 0;
+            background-color: #000; /* Black background for intro */
+            overflow: hidden; /* Prevent scrollbars */
+            font-family: 'Inter', sans-serif; /* Default font */
+        }
+
+        /* --- Star Wars Intro Styles --- */
+        #star-wars-intro {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: #000; display: flex; justify-content: center;
+            align-items: center; z-index: 100; opacity: 1;
+            transition: opacity 1s ease-out;
+        }
+        #star-wars-intro.hidden { opacity: 0; pointer-events: none; }
+        .intro-fade-text {
+            font-family: 'Press Start 2P', cursive; color: #4bd5ee; font-size: 2.5em;
+            text-align: center; opacity: 0; animation: fade-in-out 4s ease-in-out forwards;
+        }
+        .star-wars-crawl-container {
+            position: absolute; top: 50%; left: 50%; width: 80%; max-width: 800px;
+            height: 80em; transform: translate(-50%, -50%) perspective(350px) rotateX(25deg);
+            overflow: hidden; opacity: 0; animation: show-crawl 1s ease-out 4s forwards;
+        }
+        .star-wars-crawl-content {
+            position: absolute; top: 100%; width: 100%; animation: crawl 40s linear 5s forwards;
+            color: #feda4a; font-family: 'Inter', sans-serif; font-size: 3vw; line-height: 1.4;
+            text-align: justify; font-weight: bold;
+        }
+         @media (min-width: 768px) { .star-wars-crawl-content { font-size: 2em; } }
+        .star-wars-crawl-content h2, .star-wars-crawl-content h3 {
+            text-align: center; font-family: 'Press Start 2P', cursive; margin-bottom: 1em; font-size: 1.2em;
+        }
+        #skip-intro-button {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 110;
+            font-family: 'Press Start 2P', cursive; background: rgba(0,0,0,0.6); color: #feda4a;
+            border: 1px solid #feda4a; padding: 10px 20px; border-radius: 8px; cursor: pointer;
+            box-shadow: 0 2px 4px rgba(254, 218, 74, 0.3); transition: all 0.2s ease;
+            opacity: 0; animation: show-button 1s ease-out 6s forwards;
+        }
+        #skip-intro-button:hover { background: rgba(254, 218, 74, 0.2); box-shadow: 0 4px 8px rgba(254, 218, 74, 0.5); }
+        @keyframes fade-in-out { 0% { opacity: 0; } 25% { opacity: 1; } 75% { opacity: 1; } 100% { opacity: 0; } }
+        @keyframes show-crawl { to { opacity: 1; } }
+        @keyframes crawl { 0% { top: 100%; } 100% { top: -100%; } }
+        @keyframes show-button { to { opacity: 1; } }
+
+        /* --- Game Container Styles --- */
+        #game-area {
+            display: flex; justify-content: center; align-items: center; min-height: 100vh;
+            background-color: #1a1a2e; opacity: 0; transition: opacity 1s ease-in;
+        }
+         #game-area.visible { opacity: 1; }
+        .game-container {
+            display: flex; flex-direction: column; align-items: center; background-color: #162447;
+            padding: 20px; border-radius: 15px; box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+            border: 2px solid #0f3460; font-family: 'Press Start 2P', cursive; color: #e0e0e0;
+            position: relative; /* Needed for absolute positioning of canvas offset */
+            overflow: hidden; /* Hide potential screen shake overflow */
+        }
+        canvas {
+            background-color: #000; display: block; border-radius: 10px;
+            border: 1px solid #537895; max-width: 100%; height: auto;
+            /* Position relative for screen shake offset */
+             position: relative;
+             left: 0;
+             top: 0;
+             transition: left 0.05s linear, top 0.05s linear; /* Smooth shake return */
+        }
+        .info-text {
+             margin-top: 10px; text-align: center; font-size: 0.8em; color: #a2d2ff; line-height: 1.4;
+        }
+        #message {
+            margin-top: 15px; font-size: 1.2em; color: #ffcc00; min-height: 2em; text-align: center;
+        }
+        button#startButton {
+            font-family: 'Press Start 2P', cursive; background: linear-gradient(145deg, #1e90ff, #4682b4);
+            color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;
+            margin-top: 15px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3); transition: all 0.2s ease;
+            border-bottom: 3px solid #1c6ba0;
+        }
+        button#startButton:hover { background: linear-gradient(145deg, #4682b4, #1e90ff); box-shadow: 0 6px 8px rgba(0, 0, 0, 0.4); transform: translateY(-2px); }
+        button#startButton:active { transform: translateY(1px); box-shadow: 0 2px 3px rgba(0, 0, 0, 0.3); border-bottom-width: 2px; }
+    </style>
+</head>
+<body>
+
+    <div id="star-wars-intro">
+        <div class="intro-fade-text"> A long time ago, in a galaxy far,<br> far away.... </div>
+        <div class="star-wars-crawl-container">
+            <div class="star-wars-crawl-content">
+                <h2>EPISODE IV.I</h2> <h3>A NEW MERGER</h3>
+                <p>It is a period of cosmic collision. Two lone black holes, drawn together by an inescapable gravitational pull, hurtle towards a dramatic merger.</p>
+                <p>From the void emerge unstable HORIZON-LIKE STRUCTURES, remnants of spacetime distortions, threatening to disrupt the delicate cosmic dance.</p>
+                <p>An AI pilot (Cyan) guides one black hole towards its destiny, while a brave human pilot (Magenta) controls the other.</p>
+                <p>They must navigate the treacherous field of obstacles, merge their singularities, and guide the resulting KERR BLACK HOLE to the safety of the central target zone before being consumed by the chaos....</p>
+            </div>
+        </div>
+        <button id="skip-intro-button">Skip Intro & Start Game</button>
+    </div>
+
+    <div id="game-area">
+        <div class="game-container">
+            <h1 class="text-xl mb-4 text-center text-[#a2d2ff]">Binary Black Hole Merger</h1>
+            <canvas id="gameCanvas" width="600" height="400"></canvas>
+            <div id="message">Press Start!</div>
+            <div class="info-text"> P1: AI (Cyan) | P2: Arrow Keys (Magenta) </div>
+            <div class="info-text" id="instruction"> Goal: Merge players, avoid obstacles, then reach target! </div>
+            <button id="startButton" style="display: none;">Start Game</button>
+            <div class="info-text status"> Status: <span id="gameState">Idle</span> </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const introScreen = document.getElementById('star-wars-intro');
+        const skipIntroButton = document.getElementById('skip-intro-button');
+        const gameArea = document.getElementById('game-area');
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const messageEl = document.getElementById('message');
+        const startButton = document.getElementById('startButton');
+        const gameStateEl = document.getElementById('gameState');
+        const instructionEl = document.getElementById('instruction');
+
+        // --- Game Variables ---
+        let player1, player2, mergedPlayer, target, obstacles;
+        let gameActive = false;
+        let merged = false;
+        let animationFrameId;
+        let particles = []; // Array for particle effects
+        let screenShakeIntensity = 0;
+        let screenShakeDuration = 0;
+        let time = 0; // Simple time counter for animations
+
+        const playerSpeed = 3;
+        const aiSpeed = 2.5;
+        const obstacleSpeed = 1;
+        const numObstacles = 8;
+        const aiAwarenessRadius = 80;
+        const aiAvoidanceStrength = 1.5;
+        const particleTrailRate = 3; // Lower number = more particles
+        const maxParticles = 200; // Limit total particles
+
+        // --- Sound Synthesis (Tone.js) ---
+        let soundsReady = false;
+        let synth, noiseSynth, membraneSynth, polySynth;
+
+        function setupSounds() {
+            if (soundsReady) return;
+            try {
+                synth = new Tone.Synth({ oscillator: { type: "sine" }, envelope: { attack: 0.01, decay: 0.1, sustain: 0.1, release: 0.2 } }).toDestination();
+                noiseSynth = new Tone.NoiseSynth({ noise: { type: 'white' }, envelope: { attack: 0.005, decay: 0.1, sustain: 0 } }).toDestination();
+                membraneSynth = new Tone.MembraneSynth({ pitchDecay: 0.01, octaves: 5, envelope: { attack: 0.001, decay: 0.2, sustain: 0.01, release: 0.1 } }).toDestination();
+                 polySynth = new Tone.PolySynth(Tone.Synth, { oscillator: { type: "triangle" }, envelope: { attack: 0.02, decay: 0.1, sustain: 0.3, release: 0.4 } }).toDestination();
+                soundsReady = true;
+                console.log("Sounds initialized.");
+            } catch (error) {
+                console.error("Error initializing Tone.js:", error);
+                // Handle browsers that might block audio context creation
+                messageEl.textContent += " (Audio Error)";
+            }
+        }
+
+        function playClickSound() {
+            if (!soundsReady) return;
+            try {
+                membraneSynth.triggerAttackRelease("C2", "8n", Tone.now());
+            } catch (e) { console.error("Sound error:", e); }
+        }
+        function playMergeSound() {
+             if (!soundsReady) return;
+             try {
+                synth.triggerAttackRelease("C4", "4n", Tone.now());
+                synth.triggerAttackRelease("G4", "4n", Tone.now() + 0.1);
+                membraneSynth.triggerAttackRelease("G2", "4n", Tone.now());
+             } catch (e) { console.error("Sound error:", e); }
+        }
+        function playGameOverSound() {
+             if (!soundsReady) return;
+             try {
+                noiseSynth.triggerAttackRelease("2n", Tone.now());
+                membraneSynth.triggerAttackRelease("C1", "2n", Tone.now() + 0.05);
+             } catch (e) { console.error("Sound error:", e); }
+        }
+        function playWinSound() {
+             if (!soundsReady) return;
+             try {
+                 const now = Tone.now();
+                 polySynth.triggerAttackRelease(["C5", "E5", "G5"], "8n", now);
+                 polySynth.triggerAttackRelease(["G5", "B5", "D6"], "8n", now + 0.2);
+             } catch (e) { console.error("Sound error:", e); }
+        }
+         // Function to safely start Tone.js on user interaction
+        async function startAudioContext() {
+            if (Tone.context.state !== 'running') {
+                await Tone.start();
+                console.log('Audio context started!');
+            }
+            setupSounds(); // Initialize synths after context is running
+        }
+
+
+        // --- Utility Functions ---
+        function getRandom(min, max) { return Math.random() * (max - min) + min; }
+        function distance(obj1, obj2) {
+            if (!obj1 || !obj2) return Infinity;
+            const dx = obj1.x - obj2.x; const dy = obj1.y - obj2.y;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        // --- Particle Class ---
+        class Particle {
+            constructor(x, y, color, size, life, dx, dy) {
+                this.x = x; this.y = y; this.color = color;
+                this.size = size; this.initialLife = life; this.life = life;
+                this.dx = dx; this.dy = dy;
+            }
+            update() {
+                this.x += this.dx; this.y += this.dy;
+                this.dx *= 0.98; // Friction
+                this.dy *= 0.98;
+                this.life--;
+                this.size *= 0.97; // Shrink
+            }
+            draw() {
+                if (this.life <= 0 || this.size < 0.5) return;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                 // Fade out effect
+                ctx.globalAlpha = Math.max(0, this.life / this.initialLife);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.closePath();
+                ctx.globalAlpha = 1.0; // Reset alpha
+            }
+        }
+
+        function createParticleBurst(x, y, count, color, speedMultiplier = 1, size = 5) {
+            if (particles.length > maxParticles) return; // Limit particles
+            for (let i = 0; i < count; i++) {
+                const angle = getRandom(0, Math.PI * 2);
+                const speed = getRandom(1, 4) * speedMultiplier;
+                const life = getRandom(20, 50);
+                const pSize = getRandom(size * 0.5, size);
+                particles.push(new Particle(x, y, color, pSize, life, Math.cos(angle) * speed, Math.sin(angle) * speed));
+            }
+        }
+
+        function createTrailParticle(source) {
+             if (particles.length > maxParticles || time % particleTrailRate !== 0) return; // Limit particles & rate
+             const angle = getRandom(0, Math.PI * 2);
+             const speed = getRandom(0.1, 0.5);
+             const life = getRandom(15, 30);
+             const size = source.radius * 0.2;
+             particles.push(new Particle(source.x, source.y, source.color, size, life, Math.cos(angle) * speed, Math.sin(angle) * speed));
+        }
+
+        // --- Screen Shake ---
+        function triggerScreenShake(intensity, duration) {
+            screenShakeIntensity = intensity;
+            screenShakeDuration = duration;
+        }
+
+        // --- Game Object Classes ---
+        class Circle {
+             constructor(x, y, radius, color, dx = 0, dy = 0) {
+                this.x = x; this.y = y; this.radius = radius; this.initialRadius = radius; // Store initial radius for pulsing
+                this.color = color; this.dx = dx; this.dy = dy; this.isObstacle = false;
+            }
+            draw() {
+                // Pulsing effect for obstacles and target
+                let currentRadius = this.radius;
+                if (this.isObstacle || this === target) {
+                    const pulseFactor = 0.05; // Smaller pulse
+                    currentRadius = this.initialRadius * (1 + Math.sin(time * 0.1 + this.x) * pulseFactor); // Use x for variation
+                }
+                 // Special pulse for target when merged player is close
+                if (this === target && mergedPlayer) {
+                     const dist = distance(this, mergedPlayer);
+                     const pulseIntensity = Math.max(0, 1 - dist / (canvas.width / 3)); // Intensify pulse when close
+                     const pulseFactor = 0.15 * pulseIntensity;
+                     currentRadius = this.initialRadius * (1 + Math.sin(time * 0.2) * pulseFactor);
+                }
+
+
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, currentRadius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.closePath();
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = this.color;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+            move() {
+                this.x += this.dx; this.y += this.dy;
+                 if (this.isObstacle) {
+                     if (this.x + this.radius > canvas.width || this.x - this.radius < 0) { this.dx *= -1; this.x = Math.max(this.radius, Math.min(canvas.width - this.radius, this.x)); }
+                    if (this.y + this.radius > canvas.height || this.y - this.radius < 0) { this.dy *= -1; this.y = Math.max(this.radius, Math.min(canvas.height - this.radius, this.y)); }
+                } else {
+                    this.x = Math.max(this.radius, Math.min(canvas.width - this.radius, this.x));
+                    this.y = Math.max(this.radius, Math.min(canvas.height - this.radius, this.y));
+                }
+            }
+        }
+
+        class Player extends Circle {
+            constructor(x, y, radius, color, keys = null, isAI = false) {
+                super(x, y, radius, color);
+                this.keys = keys; this.keyState = {}; this.isAI = isAI;
+            }
+            updatePosition() {
+                if (this.isAI || !this.keys) return;
+                let moveX = 0; let moveY = 0;
+                if (this.keyState[this.keys.up]) moveY -= playerSpeed;
+                if (this.keyState[this.keys.down]) moveY += playerSpeed;
+                if (this.keyState[this.keys.left]) moveX -= playerSpeed;
+                if (this.keyState[this.keys.right]) moveX += playerSpeed;
+                const magnitude = Math.sqrt(moveX * moveX + moveY * moveY);
+                if (magnitude > 0) { moveX = (moveX / magnitude) * playerSpeed; moveY = (moveY / magnitude) * playerSpeed; }
+                if (moveX !== 0 || moveY !== 0) createTrailParticle(this); // Create trail if moving
+                this.x += moveX; this.y += moveY;
+                this.move();
+            }
+            updateAI(targetPlayer, obstacles) {
+                if (!this.isAI || !targetPlayer) return;
+                let targetX = targetPlayer.x; let targetY = targetPlayer.y;
+                let dxToTarget = targetX - this.x; let dyToTarget = targetY - this.y;
+                let distToTarget = Math.sqrt(dxToTarget * dxToTarget + dyToTarget * dyToTarget);
+                let moveX = (distToTarget > 0) ? (dxToTarget / distToTarget) : 0;
+                let moveY = (distToTarget > 0) ? (dyToTarget / distToTarget) : 0;
+                let avoidX = 0; let avoidY = 0; let obstaclesNearby = 0;
+                obstacles.forEach(obstacle => {
+                    const distToObstacle = distance(this, obstacle);
+                    const effectiveAwareness = this.radius + obstacle.radius + aiAwarenessRadius;
+                    if (distToObstacle < effectiveAwareness) {
+                        let dxFromObstacle = this.x - obstacle.x; let dyFromObstacle = this.y - obstacle.y;
+                        let dist = Math.sqrt(dxFromObstacle*dxFromObstacle + dyFromObstacle*dyFromObstacle);
+                        if (dist > 0) {
+                            const avoidanceWeight = (effectiveAwareness / (dist * dist));
+                            avoidX += (dxFromObstacle / dist) * avoidanceWeight; avoidY += (dyFromObstacle / dist) * avoidanceWeight;
+                            obstaclesNearby++;
+                        }
+                    }
+                });
+                if (obstaclesNearby > 0) {
+                     const avoidMagnitude = Math.sqrt(avoidX * avoidX + avoidY * avoidY);
+                     if(avoidMagnitude > 0) { avoidX = (avoidX / avoidMagnitude); avoidY = (avoidY / avoidMagnitude); }
+                    const targetWeight = 0.6; const avoidWeight = aiAvoidanceStrength;
+                    moveX = moveX * targetWeight + avoidX * avoidWeight; moveY = moveY * targetWeight + avoidY * avoidWeight;
+                }
+                const finalMagnitude = Math.sqrt(moveX * moveX + moveY * moveY);
+                 if (finalMagnitude > 0) {
+                    const speed = (distToTarget < this.radius + targetPlayer.radius + 5) ? Math.min(aiSpeed, distToTarget / 2) : aiSpeed;
+                    if (speed > 0.1) createTrailParticle(this); // Create trail if moving significantly
+                    this.x += (moveX / finalMagnitude) * speed; this.y += (moveY / finalMagnitude) * speed;
+                }
+                this.move();
+            }
+        }
+
+        class Obstacle extends Circle {
+             constructor(x, y, radius, color, dx, dy) {
+                super(x, y, radius, color, dx, dy);
+                this.isObstacle = true;
+            }
+        }
+
+        // --- Keyboard Input Handling ---
+        const keyState = {};
+        function setupInputListeners() { /* ... (no changes needed here) ... */
+             window.addEventListener('keydown', (e) => {
+                const key = e.key.toLowerCase();
+                 if (player2 && player2.keys && Object.values(player2.keys).includes(key)) { keyState[key] = true; if (player2) player2.keyState[key] = true; }
+                 if (mergedPlayer && mergedPlayer.keys && Object.values(mergedPlayer.keys).includes(key)) { keyState[key] = true; if (mergedPlayer) mergedPlayer.keyState[key] = true; }
+            });
+            window.addEventListener('keyup', (e) => {
+                 const key = e.key.toLowerCase();
+                 if (player2 && player2.keys && Object.values(player2.keys).includes(key)) { keyState[key] = false; if (player2) player2.keyState[key] = false; }
+                 if (mergedPlayer && mergedPlayer.keys && Object.values(mergedPlayer.keys).includes(key)) { keyState[key] = false; if (mergedPlayer) mergedPlayer.keyState[key] = false; }
+            });
+        }
+
+        // --- Game Logic ---
+        function initGame() {
+            console.log("Initializing game...");
+            if (!gameArea.classList.contains('visible')) { gameArea.classList.add('visible'); }
+            merged = false; gameActive = true; particles = []; // Clear particles
+            messageEl.textContent = "Merge the black holes!";
+            instructionEl.textContent = "Goal: Merge players, avoid obstacles, then reach target!";
+            gameStateEl.textContent = "Merging...";
+            startButton.style.display = 'none';
+
+            player1 = new Player(canvas.width * 0.2, canvas.height / 2, 15, '#00f0ff', null, true);
+            player2 = new Player(canvas.width * 0.8, canvas.height / 2, 15, '#ff00ff', { up: 'arrowup', down: 'arrowdown', left: 'arrowleft', right: 'arrowright' }, false);
+            target = new Circle(canvas.width / 2, canvas.height / 2, 30, 'rgba(255, 255, 0, 0.5)');
+            obstacles = [];
+            for (let i = 0; i < numObstacles; i++) {
+                let obsX, obsY;
+                do { obsX = getRandom(50, canvas.width - 50); obsY = getRandom(50, canvas.height - 50); }
+                while ( distance({x: obsX, y: obsY}, player1) < 100 || distance({x: obsX, y: obsY}, player2) < 100 || distance({x: obsX, y: obsY}, {x: canvas.width/2, y: canvas.height/2}) < 100 );
+                const obsRadius = getRandom(8, 15); const obsColor = `hsl(${getRandom(180, 240)}, 70%, 60%)`;
+                const angle = getRandom(0, Math.PI * 2); const speed = obstacleSpeed * getRandom(0.8, 1.2);
+                const obsDx = Math.cos(angle) * speed; const obsDy = Math.sin(angle) * speed;
+                obstacles.push(new Obstacle(obsX, obsY, obsRadius, obsColor, obsDx, obsDy));
+            }
+            mergedPlayer = null; Object.keys(keyState).forEach(key => keyState[key] = false);
+            if (animationFrameId) { cancelAnimationFrame(animationFrameId); }
+            time = 0; // Reset time counter
+            gameLoop();
+        }
+
+        function checkCollisions() {
+            // 1. Merge Collision
+            if (!merged && player1 && player2 && distance(player1, player2) < player1.radius + player2.radius) {
+                console.log("Merge!");
+                playMergeSound(); // <<<<<< SOUND
+                triggerScreenShake(5, 15); // <<<<<< JUICE
+                createParticleBurst((player1.x + player2.x) / 2, (player1.y + player2.y) / 2, 50, '#ffffff', 1.5, 8); // <<<<<< JUICE
+
+                merged = true; messageEl.textContent = "Merged! Reach the target!";
+                instructionEl.textContent = "Use Arrow Keys to reach the yellow target!"; gameStateEl.textContent = "Reaching Target...";
+                const mergedX = (player1.x + player2.x) / 2; const mergedY = (player1.y + player2.y) / 2; const mergedRadius = player1.radius + 5;
+                mergedPlayer = new Player(mergedX, mergedY, mergedRadius, '#ffffff', { up: 'arrowup', down: 'arrowdown', left: 'arrowleft', right: 'arrowright' }, false);
+                mergedPlayer.keyState = keyState; player1 = null; player2 = null;
+            }
+            // 2. Obstacle Collision
+            obstacles.forEach(obstacle => {
+                let hit = false;
+                let reason = "";
+                if (!merged && player1 && distance(player1, obstacle) < player1.radius + obstacle.radius) { hit = true; reason = "AI Player hit an unstable surface!"; }
+                if (!merged && player2 && distance(player2, obstacle) < player2.radius + obstacle.radius) { hit = true; reason = "Player 2 hit an unstable surface!"; }
+                if (merged && mergedPlayer && distance(mergedPlayer, obstacle) < mergedPlayer.radius + obstacle.radius) { hit = true; reason = "Merged black hole hit an unstable surface!"; }
+                if (hit) {
+                    gameOver(reason);
+                    triggerScreenShake(8, 20); // <<<<<< JUICE
+                    // Find collision point approx
+                    const collider = mergedPlayer || (reason.includes("AI") ? player1 : player2);
+                    if (collider) {
+                         createParticleBurst(collider.x, collider.y, 30, obstacle.color, 1, 5); // <<<<<< JUICE
+                    }
+                }
+            });
+            // 3. Win Collision
+            if (merged && mergedPlayer && distance(mergedPlayer, target) < mergedPlayer.radius + target.radius / 2) {
+                winGame();
+                createParticleBurst(target.x, target.y, 100, target.color, 2, 10); // <<<<<< JUICE
+            }
+        }
+
+        function updateGame() {
+            if (!gameActive) return;
+            time++; // Increment time counter
+
+            // Update players/AI
+            if (!merged) {
+                if (player1 && player1.isAI) player1.updateAI(player2, obstacles);
+                if (player2 && !player2.isAI) player2.updatePosition();
+            } else if (mergedPlayer) {
+                 mergedPlayer.updatePosition();
+            }
+            // Update obstacles
+            obstacles.forEach(obstacle => obstacle.move());
+            // Update particles
+            particles = particles.filter(p => p.life > 0 && p.size >= 0.5); // Remove dead particles
+            particles.forEach(p => p.update());
+
+            // Update screen shake
+            if (screenShakeDuration > 0) {
+                screenShakeDuration--;
+                if (screenShakeDuration === 0) {
+                    screenShakeIntensity = 0;
+                     // Reset canvas position smoothly
+                     canvas.style.left = `0px`;
+                     canvas.style.top = `0px`;
+                }
+            }
+
+            checkCollisions(); // Check collisions after updates
+        }
+
+        function drawGame() {
+            // Apply screen shake
+            let shakeX = 0;
+            let shakeY = 0;
+            if (screenShakeIntensity > 0) {
+                shakeX = (Math.random() - 0.5) * 2 * screenShakeIntensity;
+                shakeY = (Math.random() - 0.5) * 2 * screenShakeIntensity;
+                // Apply offset by moving the canvas element slightly
+                 canvas.style.left = `${shakeX}px`;
+                 canvas.style.top = `${shakeY}px`;
+            }
+
+            // Clear canvas (relative to its potentially shaken position)
+             ctx.clearRect(-shakeX, -shakeY, canvas.width + Math.abs(shakeX*2), canvas.height + Math.abs(shakeY*2)); // Clear slightly larger area
+
+            // Draw target zone
+            if (merged || (!gameActive && mergedPlayer)) { // Draw target even on win screen
+                target.draw();
+            }
+            // Draw obstacles
+            obstacles.forEach(obstacle => obstacle.draw());
+            // Draw players or merged player
+            if (!merged) {
+                if(player1) player1.draw();
+                if(player2) player2.draw();
+            } else if (mergedPlayer) {
+                mergedPlayer.draw();
+            }
+            // Draw particles
+            particles.forEach(p => p.draw());
+
+        }
+
+        function gameOver(reason) {
+            if (!gameActive) return; // Prevent multiple calls
+            console.log("Game Over:", reason);
+            playGameOverSound(); // <<<<<< SOUND
+            gameActive = false; messageEl.textContent = `Game Over! ${reason}`;
+            instructionEl.textContent = " "; gameStateEl.textContent = "Failed";
+            startButton.textContent = "Try Again"; startButton.style.display = 'block'; startButton.disabled = false;
+             if (animationFrameId) { cancelAnimationFrame(animationFrameId); }
+        }
+
+        function winGame() {
+            if (!gameActive) return; // Prevent multiple calls
+             console.log("You Win!");
+             playWinSound(); // <<<<<< SOUND
+            gameActive = false; messageEl.textContent = "Success! Merger Complete!";
+            instructionEl.textContent = "Well done!"; gameStateEl.textContent = "Success!";
+            startButton.textContent = "Play Again"; startButton.style.display = 'block'; startButton.disabled = false;
+             if (animationFrameId) { cancelAnimationFrame(animationFrameId); }
+        }
+
+        function gameLoop() {
+            updateGame();
+            drawGame();
+            if (gameActive) { // Only continue loop if game is active
+                 animationFrameId = requestAnimationFrame(gameLoop);
+            } else {
+                 // If game ended, ensure one last draw call to show final state clearly
+                 drawGame();
+                 // Ensure canvas shake is reset
+                 canvas.style.left = `0px`;
+                 canvas.style.top = `0px`;
+            }
+        }
+
+        // --- Event Listeners ---
+        skipIntroButton.addEventListener('click', async () => { // Make async for Tone.start()
+            await startAudioContext(); // Ensure audio context is running
+            playClickSound(); // <<<<<< SOUND
+            introScreen.classList.add('hidden');
+             setTimeout(() => {
+                 gameArea.classList.add('visible'); startButton.style.display = 'block'; startButton.disabled = false;
+                 messageEl.textContent = "Press Start!"; instructionEl.textContent = "Goal: Merge players, avoid obstacles, then reach target!";
+                 gameStateEl.textContent = "Ready";
+             }, 1000);
+        });
+
+         startButton.addEventListener('click', () => {
+             playClickSound(); // <<<<<< SOUND
+            startButton.disabled = true;
+            initGame();
+        });
+
+        // --- Initial Setup ---
+        setupInputListeners();
+        function resizeCanvas() { }
+        window.addEventListener('load', resizeCanvas);
+        window.addEventListener('resize', resizeCanvas);
+
+    </script>
+</body>
+</html>
