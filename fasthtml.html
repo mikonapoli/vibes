@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FastHTML Factory</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leader-line-new@1.1.9/leader-line.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        /* Basic Styling */
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(to bottom, #e0f2fe, #f0f4f8);
+            overscroll-behavior: none;
+            color: #374151;
+        }
+        .game-font { font-family: 'Press Start 2P', cursive; }
+        .game-container {
+            display: grid;
+            grid-template-columns: 1fr 3fr 1fr;
+            grid-template-rows: auto auto auto 1fr auto;
+            gap: 1rem; padding: 1rem; height: 100vh; max-width: 1400px; margin: 0 auto; box-sizing: border-box;
+        }
+        .header-area { grid-column: 1 / -1; grid-row: 1; }
+        .story-area { grid-column: 1 / -1; grid-row: 2; }
+        .request-area { grid-column: 1 / -1; grid-row: 3; }
+        .palette-area { grid-column: 1; grid-row: 4; }
+        .builder-area { grid-column: 2; grid-row: 4; }
+        .target-area { grid-column: 3; grid-row: 4; }
+        .footer-area { grid-column: 1 / -1; grid-row: 5; }
+        .panel {
+            background-color: rgba(255, 255, 255, 0.9); border-radius: 0.75rem; padding: 1rem;
+            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.1); overflow-y: auto; height: 100%;
+            box-sizing: border-box; border: 1px solid rgba(209, 213, 219, 0.5);
+        }
+        .story-box {
+             background-color: #dbeafe; color: #1e3a8a; padding: 0.75rem; border-radius: 0.5rem;
+             margin-bottom: 1rem; text-align: center; font-style: italic; border: 1px solid #bfdbfe;
+        }
+        /* FT Component Styling */
+        .ft-component {
+            background-color: #e0e7ff; border: 1px solid #c7d2fe; color: #3730a3;
+            padding: 0.5rem 1rem; margin-bottom: 0.5rem; border-radius: 0.5rem; cursor: grab;
+            text-align: left; font-weight: 500; transition: all 0.2s ease-in-out;
+            position: relative; user-select: none; min-height: 38px; display: block;
+        }
+        .ft-component:hover { transform: translateY(-2px); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .ft-component:active { cursor: grabbing; background-color: #c7d2fe; transform: translateY(0px); box-shadow: none; }
+        .ft-component::after {
+            content: 'Cost: ' attr(data-cost); position: absolute; bottom: 2px; right: 5px;
+            font-size: 0.65rem; color: #4338ca; background-color: rgba(255, 255, 255, 0.7);
+            padding: 1px 3px; border-radius: 3px;
+         }
+        /* Builder Area Styling */
+        .builder-dropzone {
+            min-height: 200px; border: 2px dashed #a5b4fc; border-radius: 0.5rem;
+            padding: 1rem; background-color: #f8fafc; transition: background-color 0.3s;
+        }
+         .builder-dropzone.drag-over { background-color: #eef2ff; }
+        .builder-dropzone .ft-component {
+             background-color: #dcfce7; border-color: #bbf7d0; color: #166534;
+        }
+         .builder-dropzone .ft-component::after { color: #15803d; }
+        .builder-dropzone .ft-component .attr-button {
+            position: absolute; top: 4px; right: 4px; background-color: #4f46e5; color: white;
+            border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 12px;
+            line-height: 20px; text-align: center; cursor: pointer; opacity: 0;
+            transition: opacity 0.2s, background-color 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+            z-index: 10;
+        }
+         .builder-dropzone .ft-component .attr-button:hover { background-color: #4338ca; }
+         .builder-dropzone .ft-component:hover .attr-button { opacity: 1; }
+        /* Editable Text Styling */
+        .editable-text {
+            display: inline-block; /* Allow interaction */
+            border-bottom: 1px dashed #9ca3af; /* Indicate editable */
+            padding: 0 2px;
+            margin: 0 4px; /* Spacing */
+            min-width: 50px; /* Ensure clickable area */
+            cursor: text;
+        }
+        .editable-text:focus {
+            outline: none;
+            background-color: #fef9c3; /* Yellow background on focus */
+            border-bottom: 1px solid #4f46e5;
+        }
+         /* Nested dropzone styling */
+        .nested-dropzone {
+            margin-left: 1rem; margin-top: 0.5rem; padding: 0.5rem; border: 1px dashed #d1d5db;
+            border-radius: 0.375rem; min-height: 40px; background-color: rgba(243, 244, 246, 0.5);
+        }
+         .nested-dropzone.drag-over { background-color: #e0e7ff; }
+        .dropzone-placeholder { color: #9ca3af; text-align: center; padding: 1rem; pointer-events: none; }
+        /* Target Output Styling */
+        .target-output pre {
+            background-color: #1f2937; color: #d1d5db; padding: 1rem; border-radius: 0.5rem;
+            overflow-x: auto; font-family: 'Courier New', Courier, monospace; font-size: 0.9em;
+            border: 1px solid #374151;
+        }
+        /* Request Display Styling */
+        .request-card {
+            background-color: #fffbeb; border: 1px solid #fef3c7; color: #b45309;
+            padding: 1rem; border-radius: 0.5rem; text-align: center; font-weight: 600;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+         .request-card strong { color: #92400e; }
+        /* Modal Styling */
+        .modal {
+            display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%;
+            overflow: auto; background-color: rgba(0,0,0,0.6); backdrop-filter: blur(3px);
+        }
+        .modal-content {
+            background-color: #fefefe; margin: 10% auto; padding: 25px; border: 1px solid #888;
+            width: 90%; max-width: 550px; border-radius: 0.75rem; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        .close-button {
+            color: #aaa; float: right; font-size: 32px; font-weight: bold; cursor: pointer; line-height: 1;
+        }
+         .close-button:hover { color: #333; }
+        /* Leader line styling */
+        .leader-line { z-index: 50; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.3)); }
+        /* Button Styling */
+        .game-button {
+             font-family: 'Press Start 2P', cursive; font-size: 0.8rem;
+             background-image: linear-gradient(to bottom, #6366f1, #4f46e5); color: white;
+             padding: 0.8rem 1.6rem; border-radius: 0.5rem; border: none; cursor: pointer;
+             transition: all 0.2s ease-in-out;
+             box-shadow: 0 4px 6px rgba(0,0,0,0.15), inset 0 -2px 0 rgba(0,0,0,0.2);
+             margin: 0 0.5rem; text-shadow: 1px 1px 1px rgba(0,0,0,0.3);
+        }
+        .game-button:hover {
+            background-image: linear-gradient(to bottom, #4f46e5, #4338ca); transform: translateY(-1px);
+            box-shadow: 0 6px 8px rgba(0,0,0,0.15), inset 0 -2px 0 rgba(0,0,0,0.2);
+        }
+         .game-button:active {
+             transform: translateY(1px);
+             box-shadow: 0 2px 3px rgba(0,0,0,0.15), inset 0 -1px 0 rgba(0,0,0,0.2);
+         }
+         .game-button:disabled {
+             background-image: linear-gradient(to bottom, #a5b4fc, #818cf8); cursor: not-allowed;
+             opacity: 0.7; box-shadow: 0 2px 3px rgba(0,0,0,0.1), inset 0 -1px 0 rgba(0,0,0,0.1);
+         }
+        .game-button.reset { background-image: linear-gradient(to bottom, #ef4444, #dc2626); }
+         .game-button.reset:hover { background-image: linear-gradient(to bottom, #dc2626, #b91c1c); }
+         /* Feedback Styling */
+         #feedback { min-height: 1.5em; transition: all 0.3s ease-in-out; }
+        .feedback-correct { color: #16a34a; transform: scale(1.05); }
+        .feedback-incorrect { color: #dc2626; animation: shake 0.5s ease-in-out; }
+         @keyframes shake {
+             0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); }
+             50% { transform: translateX(5px); } 75% { transform: translateX(-5px); }
+         }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div class="game-container">
+        <header class="header-area text-center py-4">
+            <h1 class="text-3xl font-bold game-font text-indigo-700 mb-2">FastHTML Factory</h1>
+            <div class="text-indigo-600 text-sm">
+                <span>Level: <span id="level" class="font-semibold">1</span></span> |
+                <span>Score: <span id="score" class="font-semibold">0</span></span> |
+                <span>Budget: <span id="budget-remaining" class="font-semibold">0</span>/<span id="budget-total" class="font-semibold">0</span></span>
+            </div>
+        </header>
+
+        <div class="story-area">
+             <div id="story-box" class="story-box">
+                 Welcome to HyperWeb Inc.! Your first task is ready...
+             </div>
+        </div>
+
+        <div class="request-area">
+            <div id="request-display" class="request-card">
+                Loading Request...
+            </div>
+        </div>
+
+        <aside class="palette-area panel">
+            <h2 class="text-xl font-semibold mb-4 text-indigo-700 game-font">FastTags</h2>
+            <div id="ft-palette" class="space-y-2">
+                </div>
+        </aside>
+
+        <main class="builder-area panel">
+            <h2 class="text-xl font-semibold mb-4 text-indigo-700 game-font">Builder</h2>
+            <div id="builder-dropzone" class="builder-dropzone">
+                <p class="dropzone-placeholder">Drag FastTags here</p>
+            </div>
+        </main>
+
+        <aside class="target-area panel">
+            <h2 class="text-xl font-semibold mb-4 text-indigo-700 game-font">Target</h2>
+            <div id="target-output">
+                <pre><code class="language-html"></code></pre>
+            </div>
+             <div id="wiring-info" class="mt-4 text-sm text-gray-600">
+                </div>
+        </aside>
+
+        <footer class="footer-area text-center py-4">
+             <button id="check-button" class="game-button">Check!</button>
+             <button id="reset-button" class="game-button reset">Reset</button>
+             <p id="feedback" class="mt-2 font-semibold"></p>
+        </footer>
+    </div>
+
+    <div id="htmx-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="closeModal()">&times;</span>
+            <h3 class="text-lg font-semibold mb-4 game-font text-indigo-700">HTMX Config</h3>
+            <div id="htmx-form">
+                <input type="hidden" id="modal-element-id">
+                <div class="mb-3">
+                    <label for="htmx-verb" class="block text-sm font-medium text-gray-700">Action (hx-*)</label>
+                    <select id="htmx-verb" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                        <option value="">None</option>
+                        <option value="get">hx-get</option>
+                        <option value="post">hx-post</option>
+                        <option value="put">hx-put</option>
+                        <option value="delete">hx-delete</option>
+                    </select>
+                    <input type="text" id="htmx-url" placeholder="URL (e.g., /increment)" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                </div>
+                 <div class="mb-3">
+                    <label for="htmx-trigger" class="block text-sm font-medium text-gray-700">Trigger (hx-trigger)</label>
+                    <input type="text" id="htmx-trigger" placeholder="e.g., click, load, every 1s" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                 </div>
+                <div class="mb-3">
+                    <label for="htmx-target-mode" class="block text-sm font-medium text-gray-700">Target (hx-target)</label>
+                     <select id="htmx-target-mode" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" onchange="toggleTargetInput(this.value)">
+                        <option value="id">CSS Selector</option> <option value="this">this (the element itself)</option>
+                        <option value="closest">closest &lt;selector&gt;</option>
+                        <option value="find">find &lt;selector&gt;</option>
+                        <option value="next">next &lt;selector&gt;</option>
+                        <option value="prev">prev &lt;selector&gt;</option>
+                    </select>
+                    <input type="text" id="htmx-target-value" placeholder="e.g., #count, .item" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                    <p class="text-xs text-gray-500 mt-1">Or click 'Select Target' and click an element in the builder.</p>
+                    <button type="button" onclick="selectTargetElement()" class="mt-1 text-sm text-indigo-600 hover:text-indigo-800 font-semibold">Select Target</button>
+                </div>
+                <div class="mb-4">
+                    <label for="htmx-swap" class="block text-sm font-medium text-gray-700">Swap (hx-swap)</label>
+                    <select id="htmx-swap" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                        <option value="innerHTML">innerHTML (default)</option>
+                        <option value="outerHTML">outerHTML</option>
+                        <option value="beforebegin">beforebegin</option>
+                        <option value="afterbegin">afterbegin</option>
+                        <option value="beforeend">beforeend</option>
+                        <option value="afterend">afterend</option>
+                        <option value="delete">delete</option>
+                        <option value="none">none</option>
+                    </select>
+                </div>
+                <button type="button" onclick="saveHtmxAttributes()" class="game-button w-full">Save Attributes</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // --- Game State ---
+        let currentLevel = 1;
+        let score = 0;
+        let levels = {}; // Will be populated with level data
+        let draggedElement = null; // Track the element being dragged
+        let htmxConnections = []; // Store LeaderLine instances
+        let selectingTarget = false; // Flag for HTMX target selection mode
+        let currentTargetElementId = null; // Element ID for which target is being selected
+        let currentBudget = 0; // Track complexity cost for the current level
+        let levelData = null; // Store current level data globally for easier access
+
+        // --- DOM Elements ---
+        const levelDisplay = document.getElementById('level');
+        const scoreDisplay = document.getElementById('score');
+        const budgetRemainingDisplay = document.getElementById('budget-remaining');
+        const budgetTotalDisplay = document.getElementById('budget-total');
+        const storyBox = document.getElementById('story-box');
+        const requestDisplay = document.getElementById('request-display');
+        const ftPalette = document.getElementById('ft-palette');
+        const builderDropzone = document.getElementById('builder-dropzone');
+        const targetOutputCode = document.querySelector('#target-output code');
+        const wiringInfo = document.getElementById('wiring-info');
+        const checkButton = document.getElementById('check-button');
+        const resetButton = document.getElementById('reset-button');
+        const feedbackDisplay = document.getElementById('feedback');
+        const htmxModal = document.getElementById('htmx-modal');
+        const modalElementIdInput = document.getElementById('modal-element-id');
+        const htmxVerbSelect = document.getElementById('htmx-verb');
+        const htmxUrlInput = document.getElementById('htmx-url');
+        const htmxTriggerInput = document.getElementById('htmx-trigger');
+        const htmxTargetModeSelect = document.getElementById('htmx-target-mode');
+        const htmxTargetValueInput = document.getElementById('htmx-target-value');
+        const htmxSwapSelect = document.getElementById('htmx-swap');
+
+        // --- Component Costs ---
+        const componentCosts = {
+            'H1': 1, 'H2': 1, 'P': 1, 'Span': 1, 'Button': 2, 'A': 1,
+            'Div': 2, 'Form': 3, 'Input': 2, 'Ul': 2, 'Li': 1,
+        };
+
+        // --- Level Definitions ---
+        levels = {
+            1: { // Original Level 1
+                story: "Welcome, rookie! Your first task: create a simple homepage structure for HyperWeb Inc.",
+                request: "GET /",
+                description: "Return a heading element and a paragraph element.",
+                palette: ['H1', 'P'],
+                budget: 3,
+                targetHTML: `<h1>[Any Text]</h1>\n<p>[Any Text]</p>`, // Text doesn't matter here
+                targetStructure: [
+                    // Use null for text to indicate it shouldn't be checked yet
+                    { tag: 'H1', text: null, attributes: {}, children: [] },
+                    { tag: 'P', text: null, attributes: {}, children: [] }
+                ],
+                wiring: []
+            },
+            2: { // New Level 2: Text Editing Tutorial
+                story: "Good structure! Now, the client needs specific text content. Click the text to edit!",
+                request: "GET /welcome",
+                description: "Return a heading and paragraph with exact text.",
+                palette: ['H1', 'P'],
+                budget: 3,
+                targetHTML: `<h1>Welcome to HyperWeb!</h1>\n<p>Let's build something fast.</p>`,
+                targetStructure: [
+                    { tag: 'H1', text: "Welcome to HyperWeb!", attributes: {}, children: [] },
+                    { tag: 'P', text: "Let's build something fast.", attributes: {}, children: [] }
+                ],
+                wiring: []
+            },
+            3: { // Original Level 2, now Level 3
+                story: "Okay, let's organize! Wrap the 'About Us' content in a Div with class 'about-section'.",
+                request: "GET /about",
+                description: "Create a nested structure with a specific class and text.",
+                palette: ['Div', 'H2', 'P'],
+                budget: 5,
+                targetHTML: `<div class="about-section">\n  <h2>About Us</h2>\n  <p>We build amazing things with FastHTML!</p>\n</div>`,
+                targetStructure: [
+                    { tag: 'Div', attributes: { class: 'about-section' }, children: [
+                        { tag: 'H2', text: 'About Us', attributes: {}, children: [] },
+                        { tag: 'P', text: 'We build amazing things with FastHTML!', attributes: {}, children: [] }
+                    ]}
+                ],
+                 wiring: []
+            },
+             4: { // Original Level 3, now Level 4
+                story: "Time for interactivity! Wire up this button using HTMX to POST to /increment and target #count.",
+                request: "GET /counter",
+                description: "Display a counter and a button wired with hx-post and hx-target.",
+                palette: ['Div', 'P', 'Span', 'Button'],
+                budget: 8,
+                targetHTML: `<div id="counter-display">\n  <p>Count: <span id="count">0</span></p>\n  <button hx-post="/increment" hx-target="#count">Increment</button>\n</div>`,
+                targetStructure: [
+                     { tag: 'Div', attributes: { id: 'counter-display' }, children: [
+                        { tag: 'P', text: 'Count:', attributes: {}, children: [ // Note: Text check might need refinement if span is inside P
+                             { tag: 'Span', text: '0', attributes: { id: 'count'}, children: [] }
+                        ]},
+                        { tag: 'Button', text: 'Increment', attributes: { 'hx-post': '/increment', 'hx-target': '#count' }, children: [] }
+                    ]}
+                ],
+                wiring: [
+                    { fromSelector: 'button', attribute: 'hx-post', value: '/increment' },
+                    { fromSelector: 'button', attribute: 'hx-target', value: '#count' }
+                ]
+            }
+            // TODO: Add more levels
+        };
+
+        // --- Initialization ---
+        function initGame() {
+            loadLevel(currentLevel);
+            setupDragAndDrop();
+            checkButton.addEventListener('click', checkAnswer);
+            resetButton.addEventListener('click', () => loadLevel(currentLevel));
+        }
+
+        // --- Level Loading ---
+        function loadLevel(levelNumber) {
+            levelData = levels[levelNumber]; // Store globally for current level
+            if (!levelData) {
+                storyBox.textContent = "Wow, you're a FastHTML Pro! You've completed all challenges!";
+                feedbackDisplay.textContent = "Congratulations! Game Complete!";
+                feedbackDisplay.className = 'mt-2 font-semibold feedback-correct';
+                checkButton.disabled = true;
+                resetButton.disabled = true;
+                requestDisplay.textContent = "-";
+                targetOutputCode.textContent = "You Win!";
+                wiringInfo.textContent = "";
+                ftPalette.innerHTML = "";
+                builderDropzone.innerHTML = '<p class="dropzone-placeholder font-bold text-xl game-font">YOU WIN!</p>';
+                return;
+            }
+
+            currentLevel = levelNumber;
+            currentBudget = levelData.budget; // Reset budget for the level
+            levelDisplay.textContent = levelNumber;
+            scoreDisplay.textContent = score;
+            budgetTotalDisplay.textContent = levelData.budget;
+            updateBudgetDisplay(); // Update remaining budget display
+            storyBox.textContent = levelData.story;
+            requestDisplay.innerHTML = `<strong>Request:</strong> ${levelData.request} <br> <strong>Task:</strong> ${levelData.description}`; // More descriptive
+            targetOutputCode.textContent = levelData.targetHTML;
+            feedbackDisplay.textContent = '';
+            feedbackDisplay.className = 'mt-2 font-semibold'; // Reset feedback class
+            checkButton.disabled = false;
+
+            // Clear previous level state
+            ftPalette.innerHTML = '';
+            builderDropzone.innerHTML = '<p class="dropzone-placeholder">Drag FastTags here</p>';
+            clearHtmxConnections();
+            wiringInfo.textContent = '';
+
+            // Populate palette
+            levelData.palette.forEach(tag => {
+                const cost = componentCosts[tag] || 0; // Get cost or default to 0
+                const el = document.createElement('div');
+                el.classList.add('ft-component');
+                el.textContent = `<${tag}>`;
+                el.draggable = true;
+                el.dataset.tag = tag;
+                el.dataset.cost = cost; // Store cost
+                ftPalette.appendChild(el);
+            });
+
+             // Display wiring requirements
+            if (levelData.wiring && levelData.wiring.length > 0) {
+                wiringInfo.innerHTML = '<strong class="text-indigo-700">HTMX Wiring Required:</strong><ul>';
+                levelData.wiring.forEach(w => {
+                    wiringInfo.innerHTML += `<li class="ml-4 list-disc">${w.fromSelector} <span class="text-purple-600 font-mono text-xs">${w.attribute}</span> → "${w.value}"</li>`;
+                });
+                wiringInfo.innerHTML += '</ul>';
+            }
+
+            if (resetButton.disabled) resetButton.disabled = false;
+        }
+
+        // --- Budget Update ---
+        function updateBudgetDisplay() {
+            if (!levelData) return; // Ensure levelData is loaded
+            const usedBudget = calculateCurrentCost();
+            budgetRemainingDisplay.textContent = levelData.budget - usedBudget;
+             if (usedBudget > levelData.budget) {
+                 budgetRemainingDisplay.parentElement.classList.add('text-red-600');
+             } else {
+                 budgetRemainingDisplay.parentElement.classList.remove('text-red-600');
+             }
+        }
+
+        function calculateCurrentCost() {
+             let totalCost = 0;
+             builderDropzone.querySelectorAll('.ft-component').forEach(el => {
+                 totalCost += parseInt(el.dataset.cost || 0);
+             });
+             return totalCost;
+        }
+
+
+        // --- Drag and Drop ---
+        function setupDragAndDrop() {
+            ftPalette.addEventListener('dragstart', (e) => {
+                if (e.target.classList.contains('ft-component')) {
+                    draggedElement = e.target;
+                    e.dataTransfer.setData('text/plain', JSON.stringify({
+                        tag: e.target.dataset.tag,
+                        cost: e.target.dataset.cost
+                    }));
+                    e.dataTransfer.effectAllowed = 'move';
+                }
+            });
+            ftPalette.addEventListener('dragend', (e) => { draggedElement = null; });
+            builderDropzone.addEventListener('dragover', handleDragOver);
+            builderDropzone.addEventListener('dragleave', handleDragLeave);
+            builderDropzone.addEventListener('drop', handleDrop);
+            builderDropzone.addEventListener('dragstart', (e) => {
+                 if (e.target.classList.contains('ft-component')) {
+                     draggedElement = e.target;
+                     e.dataTransfer.setData('text/plain', JSON.stringify({
+                         tag: e.target.dataset.tag, cost: e.target.dataset.cost,
+                         id: e.target.id, htmx: e.target.dataset.htmx,
+                         text: e.target.dataset.text // Include text when moving
+                     }));
+                     e.dataTransfer.effectAllowed = 'move';
+                     setTimeout(() => { e.target.style.visibility = 'hidden'; }, 0);
+                 }
+             });
+             builderDropzone.addEventListener('dragend', (e) => {
+                 if (e.target.classList.contains('ft-component')) {
+                    e.target.style.visibility = 'visible';
+                    draggedElement = null;
+                    updateHtmxConnections();
+                 }
+             });
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'move';
+            if (e.currentTarget.classList.contains('builder-dropzone') || e.currentTarget.classList.contains('nested-dropzone')) {
+                 e.currentTarget.classList.add('drag-over');
+            }
+        }
+        function handleDragLeave(e) {
+             e.stopPropagation();
+             if (e.currentTarget.classList.contains('builder-dropzone') || e.currentTarget.classList.contains('nested-dropzone')) {
+                 e.currentTarget.classList.remove('drag-over');
+            }
+        }
+        function handleDrop(e) {
+            e.preventDefault(); e.stopPropagation();
+             if (!e.currentTarget.classList.contains('builder-dropzone') && !e.currentTarget.classList.contains('nested-dropzone')) return;
+            e.currentTarget.classList.remove('drag-over');
+            const dropZone = e.currentTarget;
+            let data;
+            try { data = JSON.parse(e.dataTransfer.getData('text/plain') || '{}'); } catch { data = {}; }
+            const isMoving = !!data.id;
+            if (dropZone === builderDropzone) {
+                const placeholder = builderDropzone.querySelector('.dropzone-placeholder');
+                if (placeholder) placeholder.remove();
+            }
+            if (isMoving) {
+                const movedElement = document.getElementById(data.id);
+                if (movedElement) {
+                     movedElement.style.visibility = 'visible';
+                     dropZone.appendChild(movedElement);
+                     updateBudgetDisplay(); updateHtmxConnections();
+                }
+            } else if (data.tag) {
+                const newElement = createBuilderElement(data.tag, data.cost);
+                if(data.htmx) newElement.dataset.htmx = data.htmx; // Restore HTMX if needed (rare)
+                if(data.text) newElement.dataset.text = data.text; // Restore text if needed (rare)
+                dropZone.appendChild(newElement);
+                updateBudgetDisplay();
+            }
+            draggedElement = null;
+        }
+
+        // --- Create Builder Element with Editable Text ---
+        function createBuilderElement(tag, cost) {
+            const id = `builder-el-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+            const el = document.createElement('div');
+            el.classList.add('ft-component');
+            el.id = id;
+            el.draggable = true;
+            el.dataset.tag = tag;
+            el.dataset.cost = cost || componentCosts[tag] || 0;
+            el.dataset.htmx = JSON.stringify({});
+
+            // Determine if text is editable for this tag
+            const isTextEditable = ['P', 'H1', 'H2', 'Button', 'Span', 'A', 'Li'].includes(tag);
+            let initialText = '';
+
+            if (isTextEditable) {
+                initialText = `[Editable Text ${tag}]`; // Placeholder
+                el.dataset.text = initialText; // Store initial text in data attribute
+
+                const textSpan = document.createElement('span');
+                textSpan.className = 'editable-text';
+                textSpan.textContent = initialText;
+                textSpan.contentEditable = "true";
+                textSpan.spellcheck = false;
+                // Update data attribute on change
+                textSpan.addEventListener('blur', (e) => { // Use blur to save when focus lost
+                    el.dataset.text = e.target.textContent.trim();
+                });
+                 // Prevent dragging when trying to edit text
+                 textSpan.addEventListener('mousedown', e => e.stopPropagation());
+                 el.appendChild(textSpan);
+            }
+
+            // Add the visual tag representation (e.g., <H1>)
+            const tagSpan = document.createElement('span');
+            tagSpan.style.fontWeight = 'normal';
+            tagSpan.style.opacity = '0.7';
+            tagSpan.style.marginLeft = isTextEditable ? '5px' : '0'; // Add space if text is present
+            tagSpan.textContent = `<${tag}>`;
+            el.appendChild(tagSpan);
+
+            // Add config button
+            const configButton = document.createElement('button');
+            configButton.className = 'attr-button';
+            configButton.title = 'Configure HTMX';
+            configButton.innerHTML = '⚙️';
+            configButton.onclick = (event) => { event.stopPropagation(); openModal(id); };
+            el.appendChild(configButton);
+
+             // Add nested dropzone for container tags
+            if (['Div', 'Form', 'Ul', 'Li', 'P'].includes(tag)) { // Added P as potentially nestable
+                const nestedZone = document.createElement('div');
+                nestedZone.classList.add('nested-dropzone');
+                nestedZone.dataset.parent = id;
+                const nestedPlaceholder = document.createElement('p');
+                nestedPlaceholder.classList.add('dropzone-placeholder');
+                nestedPlaceholder.textContent = `Drop <${tag}> children here`;
+                nestedZone.appendChild(nestedPlaceholder);
+                el.appendChild(nestedZone);
+                nestedZone.addEventListener('dragover', handleDragOver);
+                nestedZone.addEventListener('dragleave', handleDragLeave);
+                nestedZone.addEventListener('drop', (e) => {
+                    const placeholder = nestedZone.querySelector('.dropzone-placeholder');
+                    if (placeholder) placeholder.remove();
+                    handleDrop(e);
+                });
+            }
+
+            // Add click listener for target selection mode
+            el.addEventListener('click', (e) => {
+                if (selectingTarget && currentTargetElementId && currentTargetElementId !== id) {
+                    e.stopPropagation();
+                    const targetSelector = `#${el.id}`;
+                    htmxTargetValueInput.value = targetSelector;
+                    htmxTargetModeSelect.value = 'id';
+                    selectingTarget = false;
+                    currentTargetElementId = null;
+                    feedbackDisplay.textContent = `Target set to ${targetSelector}. Save attributes in modal.`;
+                    feedbackDisplay.className = 'mt-2 font-semibold text-blue-600';
+                    document.querySelectorAll('.builder-dropzone .ft-component').forEach(comp => {
+                        comp.style.pointerEvents = 'auto'; comp.style.opacity = '1';
+                    });
+                    document.body.style.cursor = 'default';
+                    htmxModal.style.display = "block";
+                }
+            });
+
+            return el;
+        }
+
+        // --- HTMX Modal & Wiring ---
+        function openModal(elementId) {
+             if (selectingTarget) return;
+            const element = document.getElementById(elementId);
+            if (!element) return;
+            modalElementIdInput.value = elementId;
+             let currentHtmxData = {};
+             try { currentHtmxData = JSON.parse(element.dataset.htmx || '{}'); } catch {}
+            htmxVerbSelect.value = currentHtmxData.verb || '';
+            htmxUrlInput.value = currentHtmxData.url || '';
+            htmxTriggerInput.value = currentHtmxData.trigger || '';
+            htmxTargetModeSelect.value = currentHtmxData.targetMode || 'id';
+            htmxTargetValueInput.value = currentHtmxData.targetValue || '';
+            htmxSwapSelect.value = currentHtmxData.swap || 'innerHTML';
+            toggleTargetInput(htmxTargetModeSelect.value);
+            htmxModal.style.display = "block";
+        }
+        function closeModal() {
+            htmxModal.style.display = "none";
+            if (selectingTarget) {
+                 selectingTarget = false; currentTargetElementId = null;
+                 document.body.style.cursor = 'default';
+                 document.querySelectorAll('.builder-dropzone .ft-component').forEach(comp => {
+                     comp.style.pointerEvents = 'auto'; comp.style.opacity = '1';
+                 });
+                 feedbackDisplay.textContent = "Target selection cancelled.";
+                 feedbackDisplay.className = 'mt-2 font-semibold text-orange-600';
+            }
+        }
+        function toggleTargetInput(mode) {
+            if (mode === 'this') {
+                htmxTargetValueInput.style.display = 'none'; htmxTargetValueInput.value = 'this';
+            } else {
+                htmxTargetValueInput.style.display = 'block';
+                 if (htmxTargetValueInput.value === 'this') { htmxTargetValueInput.value = ''; }
+            }
+        }
+        function selectTargetElement() {
+            const sourceElementId = modalElementIdInput.value; if (!sourceElementId) return;
+            selectingTarget = true; currentTargetElementId = sourceElementId;
+            feedbackDisplay.textContent = "Click on the target element in the builder area.";
+            feedbackDisplay.className = 'mt-2 font-semibold text-blue-600';
+            htmxModal.style.display = "none"; document.body.style.cursor = 'crosshair';
+            document.querySelectorAll('.builder-dropzone .ft-component').forEach(comp => {
+                if (comp.id === sourceElementId) { comp.style.pointerEvents = 'none'; comp.style.opacity = '0.5'; }
+                else { comp.style.pointerEvents = 'auto'; comp.style.opacity = '1'; }
+            });
+        }
+        function saveHtmxAttributes() {
+            const elementId = modalElementIdInput.value;
+            const element = document.getElementById(elementId); if (!element) return;
+            const htmxData = {
+                verb: htmxVerbSelect.value, url: htmxUrlInput.value.trim(),
+                trigger: htmxTriggerInput.value.trim(), targetMode: htmxTargetModeSelect.value,
+                targetValue: htmxTargetValueInput.value.trim(), swap: htmxSwapSelect.value,
+            };
+            if (htmxData.verb && !htmxData.url) { alert("Please provide a URL for the selected hx-* action."); return; }
+            if (htmxData.targetMode !== 'this' && !htmxData.targetValue) { alert("Please provide a target selector or choose 'this'."); return; }
+            element.dataset.htmx = JSON.stringify(htmxData);
+            closeModal(); drawHtmxConnections();
+            feedbackDisplay.textContent = "HTMX attributes saved.";
+            feedbackDisplay.className = 'mt-2 font-semibold text-green-600';
+             const sourceElement = document.getElementById(elementId);
+             if(sourceElement) { sourceElement.style.pointerEvents = 'auto'; sourceElement.style.opacity = '1'; }
+        }
+        // --- Visual HTMX Wiring ---
+        function drawHtmxConnections() {
+            clearHtmxConnections();
+            const elements = builderDropzone.querySelectorAll('.ft-component');
+            elements.forEach(el => {
+                let htmxData = {}; try { htmxData = JSON.parse(el.dataset.htmx || '{}'); } catch {}
+                if (htmxData.targetMode === 'id' && htmxData.targetValue && htmxData.targetValue.startsWith('#')) {
+                    const targetId = htmxData.targetValue.substring(1);
+                    const targetElement = builderDropzone.querySelector(`#${targetId}`);
+                    if (targetElement) {
+                        try {
+                            const line = new LeaderLine(
+                                LeaderLine.areaAnchor(el, {color: 'rgba(79, 70, 229, 0.8)', radius: 8}),
+                                LeaderLine.areaAnchor(targetElement, {color: 'rgba(79, 70, 229, 0.8)', radius: 8}),
+                                { color: 'rgba(79, 70, 229, 0.7)', size: 3, path: 'fluid', startSocket: 'auto', endSocket: 'auto', dash: {animation: true} }
+                            );
+                            htmxConnections.push(line);
+                        } catch (e) { console.error("LeaderLine error during creation:", e); }
+                    }
+                }
+            });
+        }
+        function clearHtmxConnections() { htmxConnections.forEach(line => { try { line.remove(); } catch (e) {} }); htmxConnections = []; }
+        function updateHtmxConnections() { requestAnimationFrame(() => { htmxConnections.forEach(line => { try { line.position(); } catch (e) {} }); }); }
+
+        // --- Validation Logic ---
+        function checkAnswer() {
+            if (!levelData) return;
+            const builtStructure = getBuilderStructure(builderDropzone);
+            const currentCost = calculateCurrentCost();
+            const budgetMatch = currentCost <= levelData.budget;
+            const structureMatch = compareStructures(builtStructure, levelData.targetStructure);
+            const wiringMatch = checkWiring(levelData.wiring, builtStructure);
+            feedbackDisplay.className = 'mt-2 font-semibold';
+            if (structureMatch && wiringMatch && budgetMatch) {
+                feedbackDisplay.textContent = `Correct! Level ${currentLevel} passed!`;
+                feedbackDisplay.classList.add('feedback-correct');
+                score += 10 + (levelData.budget - currentCost);
+                currentLevel++;
+                setTimeout(() => loadLevel(currentLevel), 1500);
+            } else {
+                 let errorMsg = "Incorrect. ";
+                 if (!structureMatch) errorMsg += "Structure/Text doesn't match. "; // Updated message
+                 if (!wiringMatch) errorMsg += "HTMX wiring is wrong. ";
+                 if (!budgetMatch) errorMsg += `Budget exceeded! (Used: ${currentCost}/${levelData.budget}) `;
+                feedbackDisplay.textContent = errorMsg.trim();
+                feedbackDisplay.classList.add('feedback-incorrect');
+                score -= 2; score = Math.max(0, score); scoreDisplay.textContent = score;
+            }
+        }
+
+        // --- Structure Extraction & Comparison (Handles data-text) ---
+        function getBuilderStructure(parentElement) {
+            const structure = [];
+            const childElements = Array.from(parentElement.children).filter(el =>
+                el.classList.contains('ft-component') && el.parentElement === parentElement
+            );
+            childElements.forEach(el => {
+                const tag = el.dataset.tag;
+                let htmxData = {}; try { htmxData = JSON.parse(el.dataset.htmx || '{}'); } catch {}
+                const attributes = {};
+                // FIX: Get text from data-text attribute if it exists
+                let text = el.dataset.text || '';
+
+                // Add standard attributes
+                if (el.id && !el.id.startsWith('builder-el-')) attributes['id'] = el.id;
+                const classes = Array.from(el.classList).filter(c => c !== 'ft-component');
+                if (classes.length > 0) attributes['class'] = classes.join(' ');
+
+                // Add HTMX attributes
+                if (htmxData.verb && htmxData.url) attributes[`hx-${htmxData.verb}`] = htmxData.url;
+                if (htmxData.trigger) attributes['hx-trigger'] = htmxData.trigger;
+                if (htmxData.targetValue) attributes['hx-target'] = htmxData.targetValue;
+                if (htmxData.swap && htmxData.swap !== 'innerHTML') attributes['hx-swap'] = htmxData.swap;
+
+                const item = { tag: tag, text: text, attributes: attributes, children: [] };
+                const nestedZone = el.querySelector(':scope > .nested-dropzone');
+                if (nestedZone) item.children = getBuilderStructure(nestedZone);
+                structure.push(item);
+            });
+            return structure;
+        }
+
+        function compareStructures(built, target) {
+            if (!built || !target || built.length !== target.length) return false;
+            for (let i = 0; i < target.length; i++) {
+                const builtItem = built[i]; const targetItem = target[i];
+                if (!builtItem || !targetItem || builtItem.tag !== targetItem.tag) return false;
+
+                const normalizeText = (str) => (str || '').replace(/\s+/g, ' ').trim();
+                // FIX: Compare text only if target text is not null
+                if (targetItem.text !== null && normalizeText(builtItem.text) !== normalizeText(targetItem.text)) {
+                    // console.log(`Text mismatch in <${builtItem.tag}>: "${normalizeText(builtItem.text)}" vs "${normalizeText(targetItem.text)}"`);
+                    return false;
+                }
+
+                const builtAttrs = builtItem.attributes || {}; const targetAttrs = targetItem.attributes || {};
+                const tempBuiltAttrs = {...builtAttrs};
+                if (tempBuiltAttrs.id && tempBuiltAttrs.id.startsWith('builder-el-') && tempBuiltAttrs.id !== targetAttrs.id) delete tempBuiltAttrs.id;
+                const builtKeys = Object.keys(tempBuiltAttrs); const targetKeys = Object.keys(targetAttrs);
+                const normalizeClass = (clsStr) => (clsStr || '').split(' ').filter(Boolean).sort().join(' ');
+                const builtClassNorm = normalizeClass(tempBuiltAttrs.class); const targetClassNorm = normalizeClass(targetAttrs.class);
+                if (builtClassNorm !== targetClassNorm) return false;
+                const builtAttrKeysNoClass = builtKeys.filter(k => k !== 'class'); const targetAttrKeysNoClass = targetKeys.filter(k => k !== 'class');
+                if (builtAttrKeysNoClass.length !== targetAttrKeysNoClass.length) return false;
+                for (const key of targetAttrKeysNoClass) { if (!tempBuiltAttrs.hasOwnProperty(key) || tempBuiltAttrs[key] !== targetAttrs[key]) return false; }
+                if (!compareStructures(builtItem.children || [], targetItem.children || [])) return false;
+            }
+            return true;
+        }
+
+        // FIX: Updated wiring check function (using explicit value field)
+        function checkWiring(requiredWiring, builtStructure) {
+            if (!requiredWiring || requiredWiring.length === 0) return true;
+            const elementsMap = new Map();
+            builderDropzone.querySelectorAll('.ft-component').forEach(el => elementsMap.set(el.id, el));
+            let matches = 0;
+            requiredWiring.forEach(req => {
+                let foundMatch = false;
+                elementsMap.forEach(el => {
+                    let elementMatchesSelector = false;
+                    if (req.fromSelector.startsWith('#')) elementMatchesSelector = el.id === req.fromSelector.substring(1);
+                    else if (req.fromSelector.startsWith('.')) elementMatchesSelector = el.classList.contains(req.fromSelector.substring(1));
+                    else elementMatchesSelector = el.dataset.tag.toLowerCase() === req.fromSelector.toLowerCase();
+                    if (elementMatchesSelector) {
+                        let htmxData = {}; try { htmxData = JSON.parse(el.dataset.htmx || '{}'); } catch {}
+                        let attributeMatch = false; const attributeName = req.attribute; const expectedValue = req.value;
+                        if (attributeName === 'hx-target' && htmxData.targetValue === expectedValue) attributeMatch = true;
+                        else if (attributeName === 'hx-post' && htmxData.verb === 'post' && htmxData.url === expectedValue) attributeMatch = true;
+                        else if (attributeName === 'hx-get' && htmxData.verb === 'get' && htmxData.url === expectedValue) attributeMatch = true;
+                        else if (attributeName === 'hx-put' && htmxData.verb === 'put' && htmxData.url === expectedValue) attributeMatch = true;
+                        else if (attributeName === 'hx-delete' && htmxData.verb === 'delete' && htmxData.url === expectedValue) attributeMatch = true;
+                        else if (attributeName === 'hx-swap' && htmxData.swap === expectedValue) attributeMatch = true;
+                        else if (attributeName === 'hx-trigger' && htmxData.trigger === expectedValue) attributeMatch = true;
+                        if (attributeMatch) foundMatch = true;
+                    }
+                });
+                if (foundMatch) matches++;
+            });
+            return matches === requiredWiring.length;
+        }
+
+        // --- Window Load & Events ---
+        window.onload = initGame;
+        window.onclick = function(event) { if (event.target == htmxModal) closeModal(); }
+        window.onresize = () => { requestAnimationFrame(drawHtmxConnections); };
+
+    </script>
+
+</body>
+</html>
