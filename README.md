@@ -10,4 +10,4 @@ Inspired by [this tweet](https://x.com/emollick/status/1910534521998487709)
 
 ## Other stuff
 * [Flop Wetness Practice](https://mikonapoli.github.io/vibes/wetness.html). A tool for practicing flop "wetness" classification in Texas Hold-Em
-* [Multiplayer Asteroids](https://mikonapli.github.io/vibes/asteroids.html). A multiplayer asteroids clone. One shotted by Gemini 2.5 pro with canvas
+* [Multiplayer Asteroids](https://mikonapoli.github.io/vibes/asteroids.html). A multiplayer asteroids clone. One shotted by Gemini 2.5 pro with canvas
